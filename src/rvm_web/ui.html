@@ -105,6 +105,12 @@
     .btn-primary { background: var(--accent); color: #fff; }
     .btn-primary:hover { background: var(--accent-h); }
     .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-upload {
+      background: var(--surface); color: var(--accent);
+      border: 1.5px solid var(--accent); white-space: nowrap;
+    }
+    .btn-upload:hover { background: #eff6ff; }
+    .btn-upload:disabled { opacity: .5; cursor: not-allowed; }
     .btn svg { width: 16px; height: 16px; fill: currentColor; }
 
     #progress-card { display: none; }
@@ -166,7 +172,15 @@
     <div class="grid">
       <div class="field field-full">
         <label for="input_source">Input video path</label>
-        <input type="text" id="input_source" placeholder="C:\Videos\input.mp4" />
+        <div style="display:flex; gap:8px; align-items:center;">
+          <input type="text" id="input_source" placeholder="C:\Videos\input.mp4" style="flex:1;" />
+          <button class="btn btn-upload" type="button" onclick="document.getElementById('file-picker').click()">
+            <svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg>
+            Carica da dispositivo
+          </button>
+          <input type="file" id="file-picker" accept="video/*" style="display:none;" onchange="uploadFile(this)" />
+        </div>
+        <span class="hint" id="upload-hint" style="display:none;"></span>
       </div>
       <div class="field field-full">
         <label for="output_composition">Output — composition (video with background removed)</label>
@@ -260,6 +274,48 @@
     </div>
   </div>
 
+  <!-- Image Background Removal -->
+  <div class="card">
+    <h2>Rimozione sfondo immagini</h2>
+    <div class="grid">
+      <div class="field field-full">
+        <label>Immagine di input</label>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <input type="text" id="img_input" placeholder="/percorso/immagine.jpg" style="flex:1;" />
+          <button class="btn btn-upload" type="button" onclick="document.getElementById('img-file-picker').click()">
+            <svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg>
+            Carica immagine
+          </button>
+          <input type="file" id="img-file-picker" accept="image/*" style="display:none;" onchange="uploadImage(this)" />
+        </div>
+        <span class="hint" id="img-upload-hint" style="display:none;"></span>
+      </div>
+      <div class="field field-full">
+        <label for="img_output">Output (PNG trasparente)</label>
+        <input type="text" id="img_output" placeholder="/percorso/output_nobg.png" />
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; gap:12px; margin-top:1rem;">
+      <button class="btn btn-primary" id="img-run-btn" type="button" onclick="runImageProcess()">
+        <svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-1.1 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+        Rimuovi sfondo
+      </button>
+      <span id="img-status-badge" style="display:none;" class="status-badge"></span>
+    </div>
+    <div id="img-preview-wrap" style="display:none; margin-top:1rem;">
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+        <div>
+          <p style="font-size:.75rem; color:var(--muted); margin-bottom:.4rem; text-transform:uppercase; letter-spacing:.06em;">Originale</p>
+          <img id="img-before" style="width:100%; border-radius:6px; border:1px solid var(--border);" />
+        </div>
+        <div style="background: repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 0 0 / 16px 16px; border-radius:6px; border:1px solid var(--border);">
+          <img id="img-after" style="width:100%; border-radius:6px;" />
+        </div>
+      </div>
+      <p style="font-size:.75rem; color:var(--muted); margin-top:.5rem;" id="img-output-hint"></p>
+    </div>
+  </div>
+
   <!-- Action -->
   <div style="display:flex; align-items:center; gap:12px; margin-bottom:1.25rem;">
     <button class="btn btn-primary" id="run-btn" onclick="runProcess()">
@@ -282,6 +338,40 @@
   let es = null;
   let logLines = 0;
 
+  async function uploadFile(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const hint = document.getElementById('upload-hint');
+    const uploadBtn = document.querySelector('.btn-upload');
+    uploadBtn.disabled = true;
+    hint.style.display = 'block';
+    hint.style.color = 'var(--muted)';
+    hint.textContent = `Caricamento "${file.name}"…`;
+
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (data.ok) {
+        document.getElementById('input_source').value = data.path;
+        // Auto-fill output composition only if empty
+        const outComp = document.getElementById('output_composition');
+        if (!outComp.value.trim()) outComp.value = data.output_path;
+        hint.style.color = 'var(--success)';
+        hint.textContent = `✓ "${file.name}" pronto`;
+      } else {
+        hint.style.color = 'var(--error)';
+        hint.textContent = 'Errore durante il caricamento.';
+      }
+    } catch (e) {
+      hint.style.color = 'var(--error)';
+      hint.textContent = 'Errore di rete.';
+    }
+    uploadBtn.disabled = false;
+    input.value = '';
+  }
+
   function appendLog(msg, cls) {
     const log = document.getElementById('log');
     const line = document.createElement('p');
@@ -301,6 +391,79 @@
 
   function setProgress(pct) {
     document.getElementById('progress-bar').style.width = pct + '%';
+  }
+
+  async function uploadImage(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const hint = document.getElementById('img-upload-hint');
+    const btn = document.querySelector('#img-file-picker + button') || document.querySelectorAll('.btn-upload')[1];
+    hint.style.display = 'block';
+    hint.style.color = 'var(--muted)';
+    hint.textContent = `Caricamento "${file.name}"…`;
+
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+      const res = await fetch('/api/upload-image', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (data.ok) {
+        document.getElementById('img_input').value = data.path;
+        if (!document.getElementById('img_output').value.trim())
+          document.getElementById('img_output').value = data.output_path;
+        // Show before preview
+        document.getElementById('img-before').src = URL.createObjectURL(file);
+        document.getElementById('img-preview-wrap').style.display = 'block';
+        document.getElementById('img-after').src = '';
+        hint.style.color = 'var(--success)';
+        hint.textContent = `✓ "${file.name}" pronto`;
+      } else {
+        hint.style.color = 'var(--error)';
+        hint.textContent = 'Errore durante il caricamento.';
+      }
+    } catch (e) {
+      hint.style.color = 'var(--error)';
+      hint.textContent = 'Errore di rete.';
+    }
+    input.value = '';
+  }
+
+  async function runImageProcess() {
+    const inputPath = document.getElementById('img_input').value.trim();
+    const outputPath = document.getElementById('img_output').value.trim();
+    if (!inputPath) { alert('Seleziona un\'immagine prima.'); return; }
+    if (!outputPath) { alert('Specifica un percorso di output.'); return; }
+
+    const btn = document.getElementById('img-run-btn');
+    const badge = document.getElementById('img-status-badge');
+    btn.disabled = true;
+    badge.style.display = 'inline-block';
+    badge.className = 'status-badge badge-running';
+    badge.textContent = 'Elaborazione…';
+
+    try {
+      const res = await fetch('/api/process-image', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ input_path: inputPath, output_path: outputPath }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        badge.className = 'status-badge badge-done';
+        badge.textContent = 'Fatto ✓';
+        document.getElementById('img-preview-wrap').style.display = 'block';
+        document.getElementById('img-after').src = '/api/preview-image?path=' + encodeURIComponent(data.output_path) + '&t=' + Date.now();
+        document.getElementById('img-output-hint').textContent = '✓ Salvato in: ' + data.output_path;
+      } else {
+        badge.className = 'status-badge badge-error';
+        badge.textContent = 'Errore';
+        alert('Errore: ' + data.error);
+      }
+    } catch (e) {
+      badge.className = 'status-badge badge-error';
+      badge.textContent = 'Errore';
+    }
+    btn.disabled = false;
   }
 
   async function runProcess() {

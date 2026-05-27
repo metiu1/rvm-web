@@ -17,6 +17,8 @@ Remove video backgrounds with state-of-the-art AI — no green screen needed.
 - GPU accelerated (CUDA) with automatic CPU fallback
 - Two models: **MobileNetV3** (fast) and **ResNet50** (accurate)
 - Export as MP4 composition, alpha mask, or PNG sequence with real RGBA transparency
+- **Image background removal** via [rembg](https://github.com/danielgatis/rembg) (U2Net) — upload a photo, get a transparent PNG, with before/after preview
+- Upload files directly from the browser (saved to `~/Downloads/rvm-uploads/`)
 - Installable in one command via `uv`
 
 ---
@@ -51,6 +53,14 @@ uv tool install git+https://github.com/metiu1/rvm-web --extra cuda
 | Device | auto, cpu, cuda | auto |
 | Seq chunk | 1, 2, 4, 8 | 1 |
 | Workers | 0, 1, 2, 4 | 0 |
+
+---
+
+## Image Background Removal
+
+The image section uses [rembg](https://github.com/danielgatis/rembg) with the U2Net model.  
+On **first use**, the model (~170 MB) is downloaded automatically to `~/.u2net/`.  
+Output is a PNG with full alpha transparency.
 
 ---
 

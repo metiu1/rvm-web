@@ -4,14 +4,14 @@ from __future__ import annotations
 import asyncio
 import json
 import queue
+import tempfile
 import threading
 import webbrowser
-from importlib.resources import files
 from pathlib import Path
 
 import uvicorn
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi import FastAPI, UploadFile, File
+from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse
 from pydantic import BaseModel
 
 from .processing import process_video
@@ -36,10 +36,39 @@ class ProcessRequest(BaseModel):
     device: str = "auto"
 
 
+class ImageRequest(BaseModel):
+    input_path: str
+    output_path: str
+
+
 @app.get("/", response_class=HTMLResponse)
 async def serve_ui() -> HTMLResponse:
     html = (Path(__file__).parent / "ui.html").read_text(encoding="utf-8")
     return HTMLResponse(content=html)
+
+
+@app.post("/api/upload")
+async def api_upload(file: UploadFile = File(...)) -> dict:
+    original_name = Path(file.filename).name if file.filename else "input.mp4"
+    stem = Path(original_name).stem
+    suffix = Path(original_name).suffix or ".mp4"
+
+    # Save to ~/Downloads/rvm-uploads/ — works on Windows & macOS
+    upload_dir = Path.home() / "Downloads" / "rvm-uploads"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+
+    dest = upload_dir / original_name
+    # Avoid overwriting: append counter if exists
+    counter = 1
+    while dest.exists():
+        dest = upload_dir / f"{stem}_{counter}{suffix}"
+        counter += 1
+
+    content = await file.read()
+    dest.write_bytes(content)
+
+    output_path = str(upload_dir / f"{dest.stem}_output{suffix}")
+    return {"ok": True, "path": str(dest), "output_path": output_path}
 
 
 @app.post("/api/process")
@@ -84,6 +113,56 @@ async def api_events() -> StreamingResponse:
 @app.get("/api/status")
 async def api_status() -> dict:
     return {"running": _job_running.is_set()}
+
+
+@app.post("/api/upload-image")
+async def api_upload_image(file: UploadFile = File(...)) -> dict:
+    original_name = Path(file.filename).name if file.filename else "input.png"
+    stem = Path(original_name).stem
+    suffix = Path(original_name).suffix or ".png"
+
+    upload_dir = Path.home() / "Downloads" / "rvm-uploads"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+
+    dest = upload_dir / original_name
+    counter = 1
+    while dest.exists():
+        dest = upload_dir / f"{stem}_{counter}{suffix}"
+        counter += 1
+
+    content = await file.read()
+    dest.write_bytes(content)
+
+    output_path = str(upload_dir / f"{dest.stem}_nobg.png")
+    return {"ok": True, "path": str(dest), "output_path": output_path}
+
+
+@app.post("/api/process-image")
+async def api_process_image(req: ImageRequest) -> dict:
+    from rembg import remove
+
+    input_path = Path(req.input_path)
+    output_path = Path(req.output_path)
+
+    if not input_path.exists():
+        return {"ok": False, "error": f"File non trovato: {input_path}"}
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(input_path, "rb") as f:
+        result = remove(f.read())
+
+    output_path.write_bytes(result)
+    return {"ok": True, "output_path": str(output_path)}
+
+
+@app.get("/api/preview-image")
+async def api_preview_image(path: str) -> FileResponse:
+    p = Path(path)
+    if not p.exists():
+        from fastapi import HTTPException
+        raise HTTPException(404, "File not found")
+    return FileResponse(str(p), media_type="image/png")
 
 
 def main() -> None:
