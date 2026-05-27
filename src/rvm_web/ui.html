@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RVM Web — Video Background Removal</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #f8f9fa;
+      --surface:   #ffffff;
+      --border:    #dee2e6;
+      --accent:    #3B82F6;
+      --accent-h:  #2563EB;
+      --text:      #212529;
+      --muted:     #6c757d;
+      --success:   #16a34a;
+      --error:     #dc2626;
+      --radius:    8px;
+      --shadow:    0 1px 4px rgba(0,0,0,.08);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    .container { max-width: 820px; margin: 0 auto; }
+
+    header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 2rem;
+    }
+    header .logo {
+      width: 44px; height: 44px;
+      background: var(--accent);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    header .logo svg { width: 24px; height: 24px; fill: #fff; }
+    header h1 { font-size: 1.5rem; font-weight: 700; line-height: 1.2; }
+    header p  { font-size: .85rem; color: var(--muted); margin-top: 2px; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .card h2 {
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 560px) { .grid { grid-template-columns: 1fr; } }
+
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    label { font-size: .82rem; font-weight: 500; color: var(--text); }
+
+    input[type="text"], select {
+      width: 100%;
+      padding: .48rem .7rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: .9rem;
+      color: var(--text);
+      background: var(--surface);
+      transition: border-color .15s;
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236c757d' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right .75rem center;
+      padding-right: 2.2rem;
+    }
+    input[type="text"]:focus, select:focus { border-color: var(--accent); }
+
+    .field-full { grid-column: 1 / -1; }
+
+    .hint { font-size: .75rem; color: var(--muted); margin-top: 2px; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: .6rem 1.4rem;
+      border: none; border-radius: 6px;
+      font-size: .92rem; font-weight: 600;
+      cursor: pointer; transition: background .15s, opacity .15s;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-h); }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+    .btn svg { width: 16px; height: 16px; fill: currentColor; }
+
+    #progress-card { display: none; }
+    #progress-bar-wrap {
+      height: 8px; background: var(--border); border-radius: 99px;
+      overflow: hidden; margin-bottom: .75rem;
+    }
+    #progress-bar {
+      height: 100%; background: var(--accent);
+      border-radius: 99px; width: 0%;
+      transition: width .3s ease;
+    }
+    #log {
+      font-family: "Cascadia Code", "Consolas", monospace;
+      font-size: .78rem;
+      background: #f1f3f5;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: .6rem .8rem;
+      max-height: 180px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      color: var(--text);
+    }
+    .log-line { margin: 0; line-height: 1.5; }
+    .log-error { color: var(--error); }
+    .log-done  { color: var(--success); font-weight: 600; }
+
+    #status-badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 99px;
+      font-size: .72rem;
+      font-weight: 600;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+    .badge-running { background: #dbeafe; color: #1d4ed8; }
+    .badge-done    { background: #dcfce7; color: #15803d; }
+    .badge-error   { background: #fee2e2; color: #b91c1c; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo">
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+    </div>
+    <div>
+      <h1>RVM Web</h1>
+      <p>AI Video Background Removal — RobustVideoMatting</p>
+    </div>
+  </header>
+
+  <!-- I/O -->
+  <div class="card">
+    <h2>Files</h2>
+    <div class="grid">
+      <div class="field field-full">
+        <label for="input_source">Input video path</label>
+        <input type="text" id="input_source" placeholder="C:\Videos\input.mp4" />
+      </div>
+      <div class="field field-full">
+        <label for="output_composition">Output — composition (video with background removed)</label>
+        <input type="text" id="output_composition" placeholder="C:\Videos\output.mp4 (leave blank to skip)" />
+      </div>
+      <div class="field">
+        <label for="output_alpha">Output — alpha mask</label>
+        <input type="text" id="output_alpha" placeholder="C:\Videos\alpha.mp4 (optional)" />
+      </div>
+      <div class="field">
+        <label for="output_foreground">Output — foreground only</label>
+        <input type="text" id="output_foreground" placeholder="C:\Videos\fg.mp4 (optional)" />
+      </div>
+    </div>
+  </div>
+
+  <!-- Model & output -->
+  <div class="card">
+    <h2>Model &amp; Output</h2>
+    <div class="grid">
+      <div class="field">
+        <label for="model_name">Model</label>
+        <select id="model_name">
+          <option value="mobilenetv3">mobilenetv3 — fast, lightweight</option>
+          <option value="resnet50">resnet50 — accurate, slower</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="output_type">Output type</label>
+        <select id="output_type">
+          <option value="video">video (.mp4)</option>
+          <option value="png_sequence">PNG sequence (RGBA, transparent)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="output_video_mbps">Video bitrate (Mbps)</label>
+        <select id="output_video_mbps">
+          <option value="1">1 Mbps — small file</option>
+          <option value="2">2 Mbps</option>
+          <option value="4" selected>4 Mbps — balanced</option>
+          <option value="8">8 Mbps — high quality</option>
+          <option value="16">16 Mbps — lossless-like</option>
+        </select>
+        <span class="hint">Only used for video output type</span>
+      </div>
+      <div class="field">
+        <label for="device">Device</label>
+        <select id="device">
+          <option value="auto" selected>Auto (GPU if available)</option>
+          <option value="cuda">CUDA (NVIDIA GPU)</option>
+          <option value="cpu">CPU (slow)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Advanced -->
+  <div class="card">
+    <h2>Advanced</h2>
+    <div class="grid">
+      <div class="field">
+        <label for="downsample_ratio">Downsample ratio</label>
+        <select id="downsample_ratio">
+          <option value="none" selected>Auto (recommended)</option>
+          <option value="1.0">1.0 — full resolution</option>
+          <option value="0.75">0.75</option>
+          <option value="0.5">0.5 — 2× faster, less detail</option>
+          <option value="0.25">0.25 — 4× faster, rough</option>
+        </select>
+        <span class="hint">Lower = faster but less precise edges</span>
+      </div>
+      <div class="field">
+        <label for="seq_chunk">Sequence chunk size</label>
+        <select id="seq_chunk">
+          <option value="1" selected>1</option>
+          <option value="2">2</option>
+          <option value="4">4</option>
+          <option value="8">8</option>
+        </select>
+        <span class="hint">Higher = more VRAM, better temporal consistency</span>
+      </div>
+      <div class="field">
+        <label for="num_workers">DataLoader workers</label>
+        <select id="num_workers">
+          <option value="0" selected>0 (safe default)</option>
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="4">4</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action -->
+  <div style="display:flex; align-items:center; gap:12px; margin-bottom:1.25rem;">
+    <button class="btn btn-primary" id="run-btn" onclick="runProcess()">
+      <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      Process Video
+    </button>
+    <span id="status-badge" style="display:none;"></span>
+  </div>
+
+  <!-- Progress -->
+  <div class="card" id="progress-card">
+    <h2>Progress</h2>
+    <div id="progress-bar-wrap"><div id="progress-bar"></div></div>
+    <div id="log"></div>
+  </div>
+
+</div>
+
+<script>
+  let es = null;
+  let logLines = 0;
+
+  function appendLog(msg, cls) {
+    const log = document.getElementById('log');
+    const line = document.createElement('p');
+    line.className = 'log-line' + (cls ? ' ' + cls : '');
+    line.textContent = msg;
+    log.appendChild(line);
+    log.scrollTop = log.scrollHeight;
+    logLines++;
+  }
+
+  function setBadge(text, cls) {
+    const b = document.getElementById('status-badge');
+    b.textContent = text;
+    b.className = 'status-badge ' + cls;
+    b.style.display = 'inline-block';
+  }
+
+  function setProgress(pct) {
+    document.getElementById('progress-bar').style.width = pct + '%';
+  }
+
+  async function runProcess() {
+    const btn = document.getElementById('run-btn');
+    const input = document.getElementById('input_source').value.trim();
+    if (!input) { alert('Please enter an input video path.'); return; }
+
+    const comp = document.getElementById('output_composition').value.trim();
+    const alpha = document.getElementById('output_alpha').value.trim();
+    const fg    = document.getElementById('output_foreground').value.trim();
+    if (!comp && !alpha && !fg) {
+      alert('Please specify at least one output path (composition, alpha, or foreground).');
+      return;
+    }
+
+    btn.disabled = true;
+    document.getElementById('progress-card').style.display = 'block';
+    document.getElementById('log').innerHTML = '';
+    logLines = 0;
+    setProgress(5);
+    setBadge('Running…', 'badge-running');
+
+    const payload = {
+      model_name:         document.getElementById('model_name').value,
+      input_source:       input,
+      output_composition: comp,
+      output_alpha:       alpha,
+      output_foreground:  fg,
+      output_type:        document.getElementById('output_type').value,
+      downsample_ratio:   document.getElementById('downsample_ratio').value,
+      output_video_mbps:  parseFloat(document.getElementById('output_video_mbps').value),
+      seq_chunk:          parseInt(document.getElementById('seq_chunk').value),
+      num_workers:        parseInt(document.getElementById('num_workers').value),
+      device:             document.getElementById('device').value,
+    };
+
+    const res = await fetch('/api/process', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!data.ok) {
+      appendLog('Error: ' + data.error, 'log-error');
+      setBadge('Error', 'badge-error');
+      btn.disabled = false;
+      return;
+    }
+
+    if (es) es.close();
+    es = new EventSource('/api/events');
+    es.onmessage = function(e) {
+      const d = JSON.parse(e.data);
+      const msg = d.msg;
+      if (msg === '__done__') {
+        setProgress(100);
+        setBadge('Done', 'badge-done');
+        appendLog('Finished.', 'log-done');
+        btn.disabled = false;
+        es.close();
+        return;
+      }
+      const isErr = msg.startsWith('ERROR:');
+      appendLog(msg, isErr ? 'log-error' : '');
+      if (isErr) { setBadge('Error', 'badge-error'); btn.disabled = false; es.close(); return; }
+      const pct = Math.min(5 + logLines * 15, 90);
+      setProgress(pct);
+    };
+  }
+</script>
+</body>
+</html>

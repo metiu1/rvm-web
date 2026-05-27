@@ -1,0 +1,44 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "rvm-web"
+version = "0.1.0"
+description = "AI video background removal with web UI — RobustVideoMatting wrapped in FastAPI"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+keywords = [
+    "background-removal", "video-matting", "pytorch", "fastapi",
+    "ai", "deep-learning", "robustvideomatting", "alpha-channel"
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.29.0",
+    "av>=12.0.0",
+    "tqdm>=4.0.0",
+    "pims>=0.6.0",
+    "torchvision>=0.17.0",
+]
+
+[project.optional-dependencies]
+cuda = ["torch>=2.2.0"]
+cpu  = ["torch>=2.2.0"]
+
+[project.scripts]
+rvm-web = "rvm_web.main:main"
+
+[project.urls]
+Homepage   = "https://github.com/<your-username>/rvm-web"
+Repository = "https://github.com/<your-username>/rvm-web"
+Issues     = "https://github.com/<your-username>/rvm-web/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/rvm_web"]
