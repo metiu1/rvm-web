@@ -36,9 +36,9 @@ cpu  = ["torch>=2.2.0"]
 rvm-web = "rvm_web.main:main"
 
 [project.urls]
-Homepage   = "https://github.com/<your-username>/rvm-web"
-Repository = "https://github.com/<your-username>/rvm-web"
-Issues     = "https://github.com/<your-username>/rvm-web/issues"
+Homepage   = "https://github.com/metiu1/rvm-web"
+Repository = "https://github.com/metiu1/rvm-web"
+Issues     = "https://github.com/metiu1/rvm-web/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/rvm_web"]

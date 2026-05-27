@@ -26,7 +26,7 @@ Remove video backgrounds with state-of-the-art AI — no green screen needed.
 Requires [uv](https://docs.astral.sh/uv/getting-started/installation/).
 
 ```bash
-uv tool install git+https://github.com/<your-username>/rvm-web
+uv tool install git+https://github.com/metiu1/rvm-web
 rvm-web
 ```
 
@@ -35,7 +35,7 @@ A browser window opens automatically at `http://localhost:7860`.
 ### CUDA (NVIDIA GPU) — recommended
 
 ```bash
-uv tool install git+https://github.com/<your-username>/rvm-web --extra cuda
+uv tool install git+https://github.com/metiu1/rvm-web --extra cuda
 ```
 
 ---
