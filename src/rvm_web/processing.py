@@ -236,6 +236,7 @@ def upscale_video(params: dict, progress_cb: Optional[Callable[[str], None]] = N
     output_path = str(params["output_path"])
     method = params.get("method", "lanczos")
     scale = int(params.get("scale", 2))
+    crf = int(params.get("crf", 16))
 
     upsampler = None
     if method == "realesrgan":
@@ -284,9 +285,9 @@ def upscale_video(params: dict, progress_cb: Optional[Callable[[str], None]] = N
                     out_v = out_c.add_stream("libx264", rate=fps)
                     out_v.width, out_v.height = upscaled.size
                     out_v.pix_fmt = "yuv420p"
-                    # Near-visually-lossless encoding so upscaled detail is
-                    # preserved (default libx264 CRF would re-compress heavily).
-                    out_v.options = {"crf": "16", "preset": "slow"}
+                    # Lower CRF = higher quality (default libx264 would
+                    # re-compress heavily and throw away upscaled detail).
+                    out_v.options = {"crf": str(crf), "preset": "slow"}
                 out_frame = av.VideoFrame.from_image(upscaled)
                 for pkt in out_v.encode(out_frame):
                     out_c.mux(pkt)

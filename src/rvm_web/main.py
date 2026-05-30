@@ -54,6 +54,7 @@ class UpscaleVideoRequest(BaseModel):
     output_path: str
     method: str = "lanczos"
     scale: int = 2
+    crf: int = 16
 
 
 def _worker(params: dict, q: "mp.Queue[str]") -> None:
@@ -287,6 +288,7 @@ async def api_upscale_video(req: UpscaleVideoRequest) -> dict:
         "output_path": req.output_path,
         "method": req.method,
         "scale": req.scale,
+        "crf": req.crf,
     }
 
     _mp_queue = mp.Queue()

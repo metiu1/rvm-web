@@ -228,6 +228,18 @@
     }
     .save-hint { font-size: .73rem; color: var(--muted); margin-top: .5rem; }
 
+    .method-warning {
+      margin-top: 1rem;
+      padding: .65rem .85rem;
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 7px;
+      font-size: .8rem;
+      color: #92400e;
+      line-height: 1.45;
+    }
+    .method-warning b { color: #78350f; }
+
     /* ── Progress panel (bottom strip) ── */
     .progress-panel {
       display: none;
@@ -520,12 +532,13 @@
           </div>
           <div class="field">
             <label>Metodo</label>
-            <select id="usc_img_method">
+            <select id="usc_img_method" onchange="updateMethodWarning('img')">
               <option value="lanczos">Lanczos (classico, nessuna dipendenza)</option>
               <option value="realesrgan">Real-ESRGAN (AI, richiede: pip install realesrgan)</option>
             </select>
           </div>
         </div>
+        <div id="usc-img-warning" class="method-warning" style="display:none;"></div>
         <div class="action-row">
           <button class="btn btn-primary" id="usc-img-run-btn" onclick="runUpscaleImage()">
             <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
@@ -582,12 +595,23 @@
           </div>
           <div class="field">
             <label>Metodo</label>
-            <select id="usc_vid_method">
+            <select id="usc_vid_method" onchange="updateMethodWarning('vid')">
               <option value="lanczos">Lanczos (classico, nessuna dipendenza)</option>
               <option value="realesrgan">Real-ESRGAN (AI, richiede: pip install realesrgan)</option>
             </select>
           </div>
+          <div class="field">
+            <label>Qualità output</label>
+            <select id="usc_vid_crf">
+              <option value="12">Massima — file grande (CRF 12)</option>
+              <option value="16" selected>Alta — consigliata (CRF 16)</option>
+              <option value="20">Media (CRF 20)</option>
+              <option value="26">Bassa — file piccolo (CRF 26)</option>
+            </select>
+            <span class="hint">CRF più basso = qualità più alta, file più grande</span>
+          </div>
         </div>
+        <div id="usc-vid-warning" class="method-warning" style="display:none;"></div>
         <div class="action-row">
           <button class="btn btn-primary" id="usc-vid-run-btn" onclick="runUpscaleVideo()">
             <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
@@ -623,6 +647,22 @@
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
     document.getElementById(id).classList.add('active');
     if (navBtn) navBtn.classList.add('active');
+  }
+
+  function updateMethodWarning(which) {
+    const method = document.getElementById('usc_' + which + '_method').value;
+    const box = document.getElementById('usc-' + which + '-warning');
+    if (method === 'realesrgan') {
+      const extra = which === 'vid'
+        ? ' Su un video lungo possono volerci <b>ore</b> senza una GPU NVIDIA.'
+        : '';
+      box.innerHTML = '<b>Real-ESRGAN (AI)</b> ricostruisce dettaglio reale, ma è '
+        + 'molto lento su <b>CPU</b> (anche decine di secondi per frame).' + extra
+        + ' Con GPU CUDA è veloce. Richiede: <code>pip install realesrgan</code>.';
+      box.style.display = 'block';
+    } else {
+      box.style.display = 'none';
+    }
   }
 
   /* ── Progress panel ── */
@@ -864,6 +904,7 @@
         input_path: inputPath, output_path: outputPath,
         method: document.getElementById('usc_vid_method').value,
         scale: parseInt(document.getElementById('usc_vid_scale').value),
+        crf: parseInt(document.getElementById('usc_vid_crf').value),
       }),
     }).then(r => r.json());
 
