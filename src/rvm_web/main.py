@@ -277,6 +277,15 @@ async def api_upscale_image(req: UpscaleImageRequest) -> dict:
     return {"ok": True, "output_path": str(output_path)}
 
 
+@app.get("/api/check-realesrgan")
+async def api_check_realesrgan() -> dict:
+    try:
+        import realesrgan  # noqa: F401
+        return {"ok": True}
+    except ImportError:
+        return {"ok": False}
+
+
 @app.post("/api/upscale-video")
 async def api_upscale_video(req: UpscaleVideoRequest) -> dict:
     global _current_proc, _mp_queue

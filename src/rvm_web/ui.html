@@ -840,6 +840,16 @@
     const outputPath = document.getElementById('usc_img_output').value.trim();
     if (!inputPath) { alert("Seleziona un'immagine prima."); return; }
     if (!outputPath) { alert('Specifica un percorso di output.'); return; }
+
+    const imgMethod = document.getElementById('usc_img_method').value;
+    if (imgMethod === 'realesrgan') {
+      const check = await fetch('/api/check-realesrgan').then(r => r.json());
+      if (!check.ok) {
+        alert('Real-ESRGAN non è installato.\n\nInstalla con:\n  pip install realesrgan basicsr\n\nOppure scegli il metodo Lanczos.');
+        return;
+      }
+    }
+
     const btn = document.getElementById('usc-img-run-btn');
     btn.disabled = true;
     setBadge('usc-img-badge', 'Elaborazione…', 'badge-running');
@@ -889,6 +899,15 @@
     const outputPath = document.getElementById('usc_vid_output').value.trim();
     if (!inputPath) { alert('Seleziona un video prima.'); return; }
     if (!outputPath) { alert('Specifica un percorso di output.'); return; }
+
+    const method = document.getElementById('usc_vid_method').value;
+    if (method === 'realesrgan') {
+      const check = await fetch('/api/check-realesrgan').then(r => r.json());
+      if (!check.ok) {
+        alert('Real-ESRGAN non è installato.\n\nInstalla con:\n  pip install realesrgan basicsr\n\nOppure scegli il metodo Lanczos.');
+        return;
+      }
+    }
 
     const runBtn = document.getElementById('usc-vid-run-btn');
     const cancelBtn = document.getElementById('usc-vid-cancel-btn');
