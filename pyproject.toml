@@ -30,8 +30,6 @@ dependencies = [
     "rembg[cpu]>=2.0.50",
     "pillow>=10.0.0",
     "imageio-ffmpeg>=0.4.9",
-    "realesrgan>=0.3.0",
-    "basicsr @ git+https://github.com/XPixelGroup/BasicSR",
 ]
 
 [project.optional-dependencies]

@@ -534,7 +534,7 @@
             <label>Metodo</label>
             <select id="usc_img_method" onchange="updateMethodWarning('img')">
               <option value="lanczos">Lanczos (classico, nessuna dipendenza)</option>
-              <option value="realesrgan">Real-ESRGAN (AI, richiede: pip install realesrgan)</option>
+              <option value="realesrgan">Real-ESRGAN (AI)</option>
             </select>
           </div>
         </div>
@@ -597,7 +597,7 @@
             <label>Metodo</label>
             <select id="usc_vid_method" onchange="updateMethodWarning('vid')">
               <option value="lanczos">Lanczos (classico, nessuna dipendenza)</option>
-              <option value="realesrgan">Real-ESRGAN (AI, richiede: pip install realesrgan)</option>
+              <option value="realesrgan">Real-ESRGAN (AI)</option>
             </select>
           </div>
           <div class="field">
@@ -658,7 +658,7 @@
         : '';
       box.innerHTML = '<b>Real-ESRGAN (AI)</b> ricostruisce dettaglio reale, ma è '
         + 'molto lento su <b>CPU</b> (anche decine di secondi per frame).' + extra
-        + ' Con GPU CUDA è veloce. Richiede: <code>pip install realesrgan</code>.';
+        + ' Con GPU CUDA è veloce.';
       box.style.display = 'block';
     } else {
       box.style.display = 'none';

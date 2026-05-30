@@ -279,11 +279,7 @@ async def api_upscale_image(req: UpscaleImageRequest) -> dict:
 
 @app.get("/api/check-realesrgan")
 async def api_check_realesrgan() -> dict:
-    try:
-        import realesrgan  # noqa: F401
-        return {"ok": True}
-    except ImportError:
-        return {"ok": False}
+    return {"ok": True}
 
 
 @app.post("/api/upscale-video")

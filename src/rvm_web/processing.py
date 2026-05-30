@@ -126,27 +126,143 @@ def process_video(params: dict, progress_cb: Optional[Callable[[str], None]] = N
 
 
 # ---------------------------------------------------------------------------
-# Upscaling
+# Upscaling — built-in Real-ESRGAN (RRDBNet), no external packages needed
 # ---------------------------------------------------------------------------
 
-def _build_realesrgan(scale: int):
-    """Return a RealESRGANer for the given scale, downloading weights on first use."""
-    from realesrgan import RealESRGANer  # type: ignore
-    from basicsr.archs.rrdbnet_arch import RRDBNet  # type: ignore
+import math
+import torch.nn as nn
+import torch.nn.functional as F
 
-    if scale <= 2:
-        net = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32, scale=2)
-        url = "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth"
-        netscale = 2
-    else:
-        net = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32, scale=4)
-        url = "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth"
-        netscale = 4
 
-    return RealESRGANer(
-        scale=netscale, model_path=url, model=net,
-        tile=512, tile_pad=10, pre_pad=0, half=False,
-    )
+class _ResidualDenseBlock(nn.Module):
+    def __init__(self, num_feat: int = 64, num_grow_ch: int = 32):
+        super().__init__()
+        self.conv1 = nn.Conv2d(num_feat, num_grow_ch, 3, 1, 1)
+        self.conv2 = nn.Conv2d(num_feat + num_grow_ch, num_grow_ch, 3, 1, 1)
+        self.conv3 = nn.Conv2d(num_feat + 2 * num_grow_ch, num_grow_ch, 3, 1, 1)
+        self.conv4 = nn.Conv2d(num_feat + 3 * num_grow_ch, num_grow_ch, 3, 1, 1)
+        self.conv5 = nn.Conv2d(num_feat + 4 * num_grow_ch, num_feat, 3, 1, 1)
+        self.lrelu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x1 = self.lrelu(self.conv1(x))
+        x2 = self.lrelu(self.conv2(torch.cat((x, x1), 1)))
+        x3 = self.lrelu(self.conv3(torch.cat((x, x1, x2), 1)))
+        x4 = self.lrelu(self.conv4(torch.cat((x, x1, x2, x3), 1)))
+        return self.conv5(torch.cat((x, x1, x2, x3, x4), 1)) * 0.2 + x
+
+
+class _RRDB(nn.Module):
+    def __init__(self, num_feat: int, num_grow_ch: int = 32):
+        super().__init__()
+        self.rdb1 = _ResidualDenseBlock(num_feat, num_grow_ch)
+        self.rdb2 = _ResidualDenseBlock(num_feat, num_grow_ch)
+        self.rdb3 = _ResidualDenseBlock(num_feat, num_grow_ch)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return (self.rdb3(self.rdb2(self.rdb1(x)))) * 0.2 + x
+
+
+class _RRDBNet(nn.Module):
+    """RRDBNet — same architecture as Real-ESRGAN x2plus / x4plus models."""
+
+    def __init__(self, num_in_ch: int = 3, num_out_ch: int = 3,
+                 num_feat: int = 64, num_block: int = 23,
+                 num_grow_ch: int = 32, scale: int = 4):
+        super().__init__()
+        self.scale = scale
+        in_ch = num_in_ch * 4 if scale == 2 else num_in_ch
+        self.conv_first = nn.Conv2d(in_ch, num_feat, 3, 1, 1)
+        self.body = nn.Sequential(*[_RRDB(num_feat, num_grow_ch) for _ in range(num_block)])
+        self.conv_body = nn.Conv2d(num_feat, num_feat, 3, 1, 1)
+        self.conv_up1 = nn.Conv2d(num_feat, num_feat, 3, 1, 1)
+        self.conv_up2 = nn.Conv2d(num_feat, num_feat, 3, 1, 1)
+        self.conv_hr = nn.Conv2d(num_feat, num_feat, 3, 1, 1)
+        self.conv_last = nn.Conv2d(num_feat, num_out_ch, 3, 1, 1)
+        self.lrelu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        if self.scale == 2:
+            x = F.pixel_unshuffle(x, 2)
+        feat = self.conv_first(x)
+        feat = feat + self.conv_body(self.body(feat))
+        feat = self.lrelu(self.conv_up1(F.interpolate(feat, scale_factor=2, mode='nearest')))
+        feat = self.lrelu(self.conv_up2(F.interpolate(feat, scale_factor=2, mode='nearest')))
+        return self.conv_last(self.lrelu(self.conv_hr(feat)))
+
+
+class _RealESRGANUpsampler:
+    """Thin wrapper: downloads weights, runs tiled inference."""
+
+    _MODELS = {
+        2: ("RealESRGAN_x2plus.pth",
+            "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth"),
+        4: ("RealESRGAN_x4plus.pth",
+            "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth"),
+    }
+
+    def __init__(self, scale: int, tile: int = 512, tile_pad: int = 10):
+        import urllib.request
+        net_scale = 2 if scale <= 2 else 4
+        fname, url = self._MODELS[net_scale]
+        cache = Path.home() / ".cache" / "rvm_web" / "realesrgan"
+        cache.mkdir(parents=True, exist_ok=True)
+        weights = cache / fname
+        if not weights.exists():
+            urllib.request.urlretrieve(url, weights)
+
+        model = _RRDBNet(scale=net_scale)
+        state = torch.load(str(weights), map_location="cpu", weights_only=False)
+        model.load_state_dict(state.get("params_ema") or state.get("params") or state)
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model = model.to(self.device).eval()
+        self.net_scale = net_scale
+        self.tile = tile
+        self.tile_pad = tile_pad
+
+    def enhance(self, img_rgb: "numpy.ndarray") -> "numpy.ndarray":
+        """HxWx3 uint8 RGB in → HxWx3 uint8 RGB out."""
+        import numpy as np
+        t = torch.from_numpy(img_rgb.astype(np.float32) / 255.0)
+        t = t.permute(2, 0, 1).unsqueeze(0).to(self.device)
+        _, _, h, w = t.shape
+        with torch.no_grad():
+            if self.tile == 0 or (h <= self.tile and w <= self.tile):
+                out = self.model(t)
+            else:
+                out = self._tiled(t)
+        out = out.squeeze(0).permute(1, 2, 0).clamp(0, 1)
+        return (out.cpu().numpy() * 255.0).round().astype(np.uint8)
+
+    def _tiled(self, img: torch.Tensor) -> torch.Tensor:
+        s = self.net_scale
+        _, c, h, w = img.shape
+        tile, pad = self.tile, self.tile_pad
+        out = torch.zeros(1, c, h * s, w * s, dtype=img.dtype, device=img.device)
+        for yi in range(math.ceil(h / tile)):
+            for xi in range(math.ceil(w / tile)):
+                x1 = max(xi * tile - pad, 0)
+                x2 = min((xi + 1) * tile + pad, w)
+                y1 = max(yi * tile - pad, 0)
+                y2 = min((yi + 1) * tile + pad, h)
+                patch = self.model(img[:, :, y1:y2, x1:x2])
+                ox1, ox2 = xi * tile * s, min((xi + 1) * tile, w) * s
+                oy1, oy2 = yi * tile * s, min((yi + 1) * tile, h) * s
+                px1 = (xi * tile - x1) * s
+                py1 = (yi * tile - y1) * s
+                out[:, :, oy1:oy2, ox1:ox2] = patch[:, :, py1:py1 + (oy2 - oy1), px1:px1 + (ox2 - ox1)]
+        return out
+
+
+_upsampler_cache: dict[int, "_RealESRGANUpsampler"] = {}
+_upsampler_lock = threading.Lock()
+
+
+def _get_realesrgan_upsampler(scale: int) -> "_RealESRGANUpsampler":
+    with _upsampler_lock:
+        if scale not in _upsampler_cache:
+            _upsampler_cache[scale] = _RealESRGANUpsampler(scale)
+        return _upsampler_cache[scale]
 
 
 def upscale_image(
@@ -155,6 +271,7 @@ def upscale_image(
     method: str = "lanczos",
     scale: int = 2,
 ) -> None:
+    import numpy as np
     from PIL import Image  # type: ignore
 
     img = Image.open(str(input_path))
@@ -162,20 +279,12 @@ def upscale_image(
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     if method == "realesrgan":
-        try:
-            import numpy as np  # type: ignore
-            upsampler = _build_realesrgan(scale)
-            bgr = np.array(img.convert("RGB"))[:, :, ::-1]
-            out_bgr, _ = upsampler.enhance(bgr, outscale=scale)
-            result = Image.fromarray(out_bgr[:, :, ::-1].copy())
-            result.save(str(output_path))
-        except ImportError:
-            raise RuntimeError(
-                "Real-ESRGAN non installato. Usa: pip install realesrgan"
-            )
+        upsampler = _get_realesrgan_upsampler(scale)
+        rgb = np.array(img.convert("RGB"))
+        result = Image.fromarray(upsampler.enhance(rgb))
+        result.save(str(output_path))
     else:
-        out = img.resize((w * scale, h * scale), Image.LANCZOS)
-        out.save(str(output_path))
+        img.resize((w * scale, h * scale), Image.LANCZOS).save(str(output_path))
 
 
 def _find_ffmpeg() -> Optional[str]:
@@ -240,25 +349,14 @@ def upscale_video(params: dict, progress_cb: Optional[Callable[[str], None]] = N
 
     upsampler = None
     if method == "realesrgan":
-        try:
-            log("Caricamento modello Real-ESRGAN…")
-            upsampler = _build_realesrgan(scale)
-            log("Modello caricato.")
-        except ImportError:
-            # Don't silently fall back to Lanczos — that produces a merely
-            # enlarged (not enhanced) video and looks like a bug to the user.
-            raise RuntimeError(
-                "Real-ESRGAN non installato: con Lanczos il video viene solo "
-                "ingrandito, non migliorato. Installa con  pip install realesrgan basicsr  "
-                "(consigliata una GPU NVIDIA: su CPU è molto lento)."
-            )
+        log("Caricamento modello Real-ESRGAN…")
+        upsampler = _get_realesrgan_upsampler(scale)
+        log("Modello caricato.")
 
     def process_frame(pil_frame: "Image.Image") -> "Image.Image":
         if upsampler is not None:
             import numpy as np
-            bgr = np.array(pil_frame.convert("RGB"))[:, :, ::-1]
-            out_bgr, _ = upsampler.enhance(bgr, outscale=scale)
-            return Image.fromarray(out_bgr[:, :, ::-1].copy())
+            return Image.fromarray(upsampler.enhance(np.array(pil_frame.convert("RGB"))))
         w, h = pil_frame.size
         return pil_frame.resize((w * scale, h * scale), Image.LANCZOS)
 
