@@ -228,7 +228,7 @@ def upscale_video(params: dict, progress_cb: Optional[Callable[[str], None]] = N
             # Copy each audio stream verbatim (no re-encode)
             audio_map: dict[int, "av.stream.Stream"] = {}
             for a in audio_in:
-                out_a = out_c.add_stream(template=a)
+                out_a = out_c.add_stream(a.codec_context.name, template=a)
                 audio_map[a.index] = out_a
 
             frame_idx = 0
