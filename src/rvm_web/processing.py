@@ -351,7 +351,7 @@ def upscale_video(params: dict, progress_cb: Optional[Callable[[str], None]] = N
     if method == "realesrgan":
         log("Caricamento modello Real-ESRGAN…")
         upsampler = _get_realesrgan_upsampler(scale)
-        log("Modello caricato.")
+        log(f"Modello caricato su {upsampler.device}.")
 
     def process_frame(pil_frame: "Image.Image") -> "Image.Image":
         if upsampler is not None:
