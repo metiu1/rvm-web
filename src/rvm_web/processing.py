@@ -271,17 +271,20 @@ def upscale_video(params: dict, progress_cb: Optional[Callable[[str], None]] = N
         log(f"Risoluzione: {orig_w}x{orig_h} → {orig_w * scale}x{orig_h * scale}, {float(fps):.2f} fps")
 
         with av.open(temp_video, "w") as out_c:
-            out_v = out_c.add_stream("libx264", rate=fps)
-            out_v.width = orig_w * scale
-            out_v.height = orig_h * scale
-            out_v.pix_fmt = "yuv420p"
-
+            # Create the encoder lazily from the first processed frame so the
+            # stream dimensions always match the real output (robust against any
+            # Real-ESRGAN rounding). Let the encoder generate timestamps from the
+            # stream rate — copying the input pts/time_base produces invalid,
+            # non-monotonic DTS and the muxer rejects packets (errno 22 EINVAL).
+            out_v = None
             frame_idx = 0
             for frame in in_c.decode(video=0):
                 upscaled = process_frame(frame.to_image())
+                if out_v is None:
+                    out_v = out_c.add_stream("libx264", rate=fps)
+                    out_v.width, out_v.height = upscaled.size
+                    out_v.pix_fmt = "yuv420p"
                 out_frame = av.VideoFrame.from_image(upscaled)
-                out_frame.pts = frame.pts
-                out_frame.time_base = frame.time_base
                 for pkt in out_v.encode(out_frame):
                     out_c.mux(pkt)
                 frame_idx += 1
@@ -289,8 +292,9 @@ def upscale_video(params: dict, progress_cb: Optional[Callable[[str], None]] = N
                     progress = f"{frame_idx}/{total}" if total else str(frame_idx)
                     log(f"Frame {progress} elaborati…")
 
-            for pkt in out_v.encode():
-                out_c.mux(pkt)
+            if out_v is not None:
+                for pkt in out_v.encode():
+                    out_c.mux(pkt)
 
     # Attach audio
     if has_audio:
