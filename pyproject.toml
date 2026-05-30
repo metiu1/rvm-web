@@ -43,3 +43,8 @@ Issues     = "https://github.com/metiu1/rvm-web/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/rvm_web"]
+
+[tool.uv]
+# Auto-detect the local CUDA driver and pull matching torch wheels.
+# Without this, PyPI serves CPU-only torch on Windows.
+torch-backend = "auto"
