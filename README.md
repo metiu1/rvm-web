@@ -1,11 +1,11 @@
-# RVM Web — AI Video Background Removal
+# RVM Web — AI Media Tools
 
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![uv](https://img.shields.io/badge/install%20with-uv-purple)](https://github.com/astral-sh/uv)
 
-**One-command web UI for [RobustVideoMatting](https://github.com/PeterL1n/RobustVideoMatting).**  
-Remove video backgrounds with state-of-the-art AI — no green screen needed.
+**One-command web UI for [RobustVideoMatting](https://github.com/PeterL1n/RobustVideoMatting) + local upscaling.**  
+Remove video/image backgrounds and upscale media with AI — no green screen needed.
 
 ![screenshot](docs/screenshot.png)
 
@@ -13,12 +13,18 @@ Remove video backgrounds with state-of-the-art AI — no green screen needed.
 
 ## Features
 
-- Web GUI with light theme, all parameters configurable via dropdowns
+Sidebar navigation with four tools:
+
+- **Video background removal** ([RobustVideoMatting](https://github.com/PeterL1n/RobustVideoMatting)) — MobileNetV3 (fast) or ResNet50 (accurate); export as MP4 composition, alpha mask, or PNG sequence with real RGBA transparency
+- **Image background removal** ([rembg](https://github.com/danielgatis/rembg) / U2Net) — upload a photo, get a transparent PNG, with before/after preview
+- **Image upscaling** — 2× / 4×, Lanczos (no extra deps) or Real-ESRGAN (AI)
+- **Video upscaling** — 2× / 4×, Lanczos or Real-ESRGAN, **original audio preserved** (muxed back via bundled ffmpeg)
+
+Plus:
+
 - GPU accelerated (CUDA) with automatic CPU fallback
-- Two models: **MobileNetV3** (fast) and **ResNet50** (accurate)
-- Export as MP4 composition, alpha mask, or PNG sequence with real RGBA transparency
-- **Image background removal** via [rembg](https://github.com/danielgatis/rembg) (U2Net) — upload a photo, get a transparent PNG, with before/after preview
 - Upload files directly from the browser (saved to `~/Downloads/rvm-uploads/`)
+- `ffmpeg` ships bundled via `imageio-ffmpeg` — no system install required
 - Installable in one command via `uv`
 
 ---
@@ -39,6 +45,17 @@ A browser window opens automatically at `http://localhost:7860`.
 ```bash
 uv tool install git+https://github.com/metiu1/rvm-web --extra cuda
 ```
+
+### Real-ESRGAN (AI upscaling) — optional
+
+Lanczos upscaling works out of the box. For AI upscaling, add the extra:
+
+```bash
+uv tool install git+https://github.com/metiu1/rvm-web --extra cpu --extra realesrgan
+```
+
+> `imageio-ffmpeg` (bundled ffmpeg, used to keep audio when upscaling video)
+> is a core dependency and is installed automatically — no separate step needed.
 
 ---
 
@@ -61,6 +78,21 @@ uv tool install git+https://github.com/metiu1/rvm-web --extra cuda
 The image section uses [rembg](https://github.com/danielgatis/rembg) with the U2Net model.  
 On **first use**, the model (~170 MB) is downloaded automatically to `~/.u2net/`.  
 Output is a PNG with full alpha transparency.
+
+---
+
+## Upscaling
+
+Both image and video upscaling support 2× and 4× with two methods:
+
+- **Lanczos** — classic high-quality resampling, no extra dependencies, fast.
+- **Real-ESRGAN** — AI super-resolution (requires the `realesrgan` extra). Model
+  weights download automatically on first use.
+
+For **video** upscaling the original audio track is preserved: the video is
+upscaled frame-by-frame, then the audio is muxed back with ffmpeg
+(`imageio-ffmpeg`, bundled). If no audio track exists the video is written
+directly.
 
 ---
 
