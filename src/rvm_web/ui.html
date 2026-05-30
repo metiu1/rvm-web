@@ -1,126 +1,251 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="it">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RVM Web — Video Background Removal</title>
+  <title>RVM Web</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%233B82F6'/><rect x='3' y='9' width='17' height='14' rx='2' fill='white'/><polygon points='22,11 29,8 29,24 22,21' fill='white'/></svg>">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:        #f8f9fa;
-      --surface:   #ffffff;
-      --border:    #dee2e6;
-      --accent:    #3B82F6;
-      --accent-h:  #2563EB;
-      --text:      #212529;
-      --muted:     #6c757d;
-      --success:   #16a34a;
-      --error:     #dc2626;
-      --radius:    8px;
-      --shadow:    0 1px 4px rgba(0,0,0,.08);
+      --bg:       #f1f5f9;
+      --surface:  #ffffff;
+      --border:   #e2e8f0;
+      --sidebar:  #1e293b;
+      --sidebar-h:#2d3f56;
+      --accent:   #3B82F6;
+      --accent-h: #2563EB;
+      --text:     #1e293b;
+      --muted:    #64748b;
+      --success:  #16a34a;
+      --error:    #dc2626;
+      --radius:   10px;
+      --shadow:   0 1px 3px rgba(0,0,0,.08);
+      --sb-w:     230px;
     }
+
+    html, body { height: 100%; }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background: var(--bg);
       color: var(--text);
+      display: flex;
       min-height: 100vh;
-      padding: 2rem 1rem;
     }
 
-    .container { max-width: 820px; margin: 0 auto; }
+    /* ── Sidebar ── */
+    .sidebar {
+      width: var(--sb-w);
+      min-width: var(--sb-w);
+      background: var(--sidebar);
+      display: flex;
+      flex-direction: column;
+      padding: 1.25rem 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
 
-    header {
+    .sb-logo {
       display: flex;
       align-items: center;
-      gap: 14px;
-      margin-bottom: 2rem;
+      gap: 10px;
+      padding: 0 1.1rem 1.5rem;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      margin-bottom: .75rem;
     }
-    header .logo {
-      width: 44px; height: 44px;
+    .sb-logo-icon {
+      width: 36px; height: 36px;
       background: var(--accent);
-      border-radius: 10px;
+      border-radius: 8px;
       display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
     }
-    header .logo svg { width: 24px; height: 24px; fill: #fff; }
-    header h1 { font-size: 1.5rem; font-weight: 700; line-height: 1.2; }
-    header p  { font-size: .85rem; color: var(--muted); margin-top: 2px; }
+    .sb-logo-icon svg { width: 20px; height: 20px; fill: #fff; }
+    .sb-logo-text h1 { font-size: 1rem; font-weight: 700; color: #fff; }
+    .sb-logo-text p  { font-size: .7rem; color: rgba(255,255,255,.45); margin-top: 1px; }
 
+    .sb-section-label {
+      font-size: .62rem;
+      text-transform: uppercase;
+      letter-spacing: .09em;
+      color: rgba(255,255,255,.3);
+      padding: .9rem 1.1rem .35rem;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: .6rem 1.1rem;
+      cursor: pointer;
+      border-radius: 0;
+      color: rgba(255,255,255,.65);
+      font-size: .875rem;
+      font-weight: 500;
+      transition: background .12s, color .12s;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+    }
+    .nav-item svg { width: 18px; height: 18px; fill: currentColor; flex-shrink: 0; }
+    .nav-item:hover { background: var(--sidebar-h); color: #fff; }
+    .nav-item.active { background: var(--accent); color: #fff; }
+
+    /* ── Main area ── */
+    .main-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .page-content {
+      flex: 1;
+      padding: 2rem;
+      overflow-y: auto;
+    }
+
+    .page { display: none; max-width: 760px; }
+    .page.active { display: block; }
+
+    .page-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+      color: var(--text);
+    }
+
+    /* ── Cards ── */
     .card {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
-      padding: 1.5rem;
-      margin-bottom: 1.25rem;
+      padding: 1.4rem;
+      margin-bottom: 1.1rem;
     }
-    .card h2 {
-      font-size: .75rem;
+    .card-title {
+      font-size: .7rem;
       text-transform: uppercase;
-      letter-spacing: .06em;
+      letter-spacing: .07em;
       color: var(--muted);
       margin-bottom: 1rem;
+      font-weight: 600;
     }
 
+    /* ── Grid / Fields ── */
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-    @media (max-width: 560px) { .grid { grid-template-columns: 1fr; } }
-
+    @media (max-width: 620px) { .grid { grid-template-columns: 1fr; } }
     .field { display: flex; flex-direction: column; gap: 5px; }
-    label { font-size: .82rem; font-weight: 500; color: var(--text); }
+    .field-full { grid-column: 1 / -1; }
+    label { font-size: .82rem; font-weight: 500; }
+    .hint { font-size: .73rem; color: var(--muted); }
 
     input[type="text"], select {
       width: 100%;
-      padding: .48rem .7rem;
+      padding: .46rem .7rem;
       border: 1px solid var(--border);
       border-radius: 6px;
       font-size: .9rem;
       color: var(--text);
       background: var(--surface);
-      transition: border-color .15s;
       outline: none;
       appearance: none;
       -webkit-appearance: none;
+      transition: border-color .15s;
     }
     select {
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236c757d' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748b' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
       background-repeat: no-repeat;
       background-position: right .75rem center;
       padding-right: 2.2rem;
     }
     input[type="text"]:focus, select:focus { border-color: var(--accent); }
 
-    .field-full { grid-column: 1 / -1; }
-
-    .hint { font-size: .75rem; color: var(--muted); margin-top: 2px; }
-
+    /* ── Buttons ── */
     .btn {
-      display: inline-flex; align-items: center; gap: 8px;
-      padding: .6rem 1.4rem;
-      border: none; border-radius: 6px;
-      font-size: .92rem; font-weight: 600;
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: .55rem 1.3rem;
+      border: none; border-radius: 7px;
+      font-size: .9rem; font-weight: 600;
       cursor: pointer; transition: background .15s, opacity .15s;
     }
+    .btn svg { width: 16px; height: 16px; fill: currentColor; }
     .btn-primary { background: var(--accent); color: #fff; }
     .btn-primary:hover { background: var(--accent-h); }
-    .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
-    .btn-danger { background: #dc2626; color: #fff; }
-    .btn-danger:hover { background: #b91c1c; }
-    .btn-danger:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-primary:disabled { opacity: .45; cursor: not-allowed; }
+    .btn-danger  { background: #dc2626; color: #fff; }
+    .btn-danger:hover  { background: #b91c1c; }
+    .btn-danger:disabled { opacity: .45; cursor: not-allowed; }
     .btn-upload {
       background: var(--surface); color: var(--accent);
       border: 1.5px solid var(--accent); white-space: nowrap;
     }
     .btn-upload:hover { background: #eff6ff; }
-    .btn-upload:disabled { opacity: .5; cursor: not-allowed; }
-    .btn svg { width: 16px; height: 16px; fill: currentColor; }
+    .btn-upload:disabled { opacity: .45; cursor: not-allowed; }
 
-    #progress-card { display: none; }
+    /* ── Action row ── */
+    .action-row {
+      display: flex; align-items: center; gap: 10px;
+      margin-top: 1.1rem;
+    }
+
+    /* ── Badges ── */
+    .status-badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 99px;
+      font-size: .72rem;
+      font-weight: 600;
+      vertical-align: middle;
+    }
+    .badge-running { background: #dbeafe; color: #1d4ed8; }
+    .badge-done    { background: #dcfce7; color: #15803d; }
+    .badge-error   { background: #fee2e2; color: #b91c1c; }
+
+    /* ── Before/after preview ── */
+    .preview-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
+      margin-top: 1rem;
+    }
+    .preview-label {
+      font-size: .72rem; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .06em;
+      margin-bottom: .35rem;
+    }
+    .preview-img {
+      width: 100%; border-radius: 7px; border: 1px solid var(--border);
+      display: block;
+    }
+    .preview-checker {
+      background: repeating-conic-gradient(#cbd5e1 0% 25%, #fff 0% 50%) 0 0 / 14px 14px;
+      border-radius: 7px; border: 1px solid var(--border);
+    }
+    .save-hint { font-size: .73rem; color: var(--muted); margin-top: .5rem; }
+
+    /* ── Progress panel (bottom strip) ── */
+    .progress-panel {
+      display: none;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      padding: 1rem 2rem;
+    }
+    .progress-panel.visible { display: block; }
+    .progress-panel-header {
+      display: flex; align-items: center; gap: 10px; margin-bottom: .6rem;
+    }
+    .progress-panel-header span {
+      font-size: .75rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .06em; color: var(--muted);
+    }
     #progress-bar-wrap {
-      height: 8px; background: var(--border); border-radius: 99px;
-      overflow: hidden; margin-bottom: .75rem;
+      height: 6px; background: var(--border); border-radius: 99px;
+      overflow: hidden; margin-bottom: .65rem;
     }
     #progress-bar {
       height: 100%; background: var(--accent);
@@ -129,368 +254,383 @@
     }
     #log {
       font-family: "Cascadia Code", "Consolas", monospace;
-      font-size: .78rem;
-      background: #f1f3f5;
+      font-size: .76rem;
+      background: #f8fafc;
       border: 1px solid var(--border);
       border-radius: 6px;
-      padding: .6rem .8rem;
-      max-height: 180px;
+      padding: .5rem .8rem;
+      max-height: 140px;
       overflow-y: auto;
       white-space: pre-wrap;
-      color: var(--text);
     }
-    .log-line { margin: 0; line-height: 1.5; }
+    .log-line  { margin: 0; line-height: 1.5; }
     .log-error { color: var(--error); }
     .log-done  { color: var(--success); font-weight: 600; }
 
-    #status-badge, .status-badge {
-      display: inline-block;
-      padding: 2px 10px;
-      border-radius: 99px;
-      font-size: .72rem;
-      font-weight: 600;
-      margin-left: 8px;
-      vertical-align: middle;
+    /* ── Responsive sidebar ── */
+    @media (max-width: 640px) {
+      body { flex-direction: column; }
+      .sidebar { width: 100%; min-width: 0; height: auto; position: static; flex-direction: row; flex-wrap: wrap; padding: .5rem; gap: .25rem; }
+      .sb-logo { border: none; padding-bottom: .5rem; margin-bottom: 0; flex-basis: 100%; }
+      .sb-section-label { display: none; }
+      .nav-item { padding: .4rem .75rem; border-radius: 6px; font-size: .8rem; }
     }
-    .badge-running { background: #dbeafe; color: #1d4ed8; }
-    .badge-done    { background: #dcfce7; color: #15803d; }
-    .badge-error   { background: #fee2e2; color: #b91c1c; }
   </style>
 </head>
 <body>
-<div class="container">
 
-  <header>
-    <div class="logo">
-      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+<!-- ═══ Sidebar ═══ -->
+<nav class="sidebar">
+  <div class="sb-logo">
+    <div class="sb-logo-icon">
+      <svg viewBox="0 0 24 24"><path d="M18 3a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3h12zm-5 4H9v10h4a5 5 0 0 0 0-10zm0 2a3 3 0 0 1 0 6H11V9h2z"/></svg>
     </div>
-    <div>
+    <div class="sb-logo-text">
       <h1>RVM Web</h1>
-      <p>AI Video Background Removal — RobustVideoMatting</p>
+      <p>AI Media Tools</p>
     </div>
-  </header>
+  </div>
 
-  <!-- I/O -->
-  <div class="card">
-    <h2>Files</h2>
-    <div class="grid">
-      <div class="field field-full">
-        <label for="input_source">Input video path</label>
-        <div style="display:flex; gap:8px; align-items:center;">
-          <input type="text" id="input_source" placeholder="C:\Videos\input.mp4" style="flex:1;" />
-          <button class="btn btn-upload" type="button" onclick="document.getElementById('file-picker').click()">
-            <svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg>
-            Carica da dispositivo
+  <div class="sb-section-label">Sfondo</div>
+
+  <button class="nav-item active" onclick="showPage('page-rvm', this)">
+    <svg viewBox="0 0 24 24"><path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V4h-4z"/></svg>
+    Sfondo video
+  </button>
+
+  <button class="nav-item" onclick="showPage('page-imgbg', this)">
+    <svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-1.1 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+    Sfondo immagine
+  </button>
+
+  <div class="sb-section-label">Upscaling</div>
+
+  <button class="nav-item" onclick="showPage('page-imgup', this)">
+    <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+    Upscaling immagine
+  </button>
+
+  <button class="nav-item" onclick="showPage('page-vidup', this)">
+    <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+    Upscaling video
+  </button>
+</nav>
+
+<!-- ═══ Main ═══ -->
+<div class="main-wrap">
+  <div class="page-content">
+
+    <!-- ── Page: Sfondo Video ── -->
+    <div class="page active" id="page-rvm">
+      <p class="page-title">Rimozione sfondo video</p>
+
+      <div class="card">
+        <p class="card-title">File</p>
+        <div class="grid">
+          <div class="field field-full">
+            <label>Video di input</label>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="text" id="input_source" placeholder="C:\Videos\input.mp4" style="flex:1;" />
+              <button class="btn btn-upload" onclick="document.getElementById('file-picker').click()">
+                <svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg>
+                Carica
+              </button>
+              <input type="file" id="file-picker" accept="video/*" style="display:none;" onchange="uploadFile(this)" />
+            </div>
+            <span class="hint" id="upload-hint" style="display:none;"></span>
+          </div>
+          <div class="field field-full">
+            <label>Output — composizione</label>
+            <input type="text" id="output_composition" placeholder="C:\Videos\output.mp4 (lascia vuoto per saltare)" />
+          </div>
+          <div class="field">
+            <label>Output — maschera alpha</label>
+            <input type="text" id="output_alpha" placeholder="C:\Videos\alpha.mp4 (opzionale)" />
+          </div>
+          <div class="field">
+            <label>Output — solo foreground</label>
+            <input type="text" id="output_foreground" placeholder="C:\Videos\fg.mp4 (opzionale)" />
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <p class="card-title">Modello e output</p>
+        <div class="grid">
+          <div class="field">
+            <label>Modello</label>
+            <select id="model_name">
+              <option value="mobilenetv3">mobilenetv3 — veloce</option>
+              <option value="resnet50">resnet50 — preciso, lento</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Tipo output</label>
+            <select id="output_type">
+              <option value="video">Video (.mp4)</option>
+              <option value="png_sequence">PNG sequence (RGBA trasparente)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Bitrate video (Mbps)</label>
+            <select id="output_video_mbps">
+              <option value="1">1 Mbps — file piccolo</option>
+              <option value="2">2 Mbps</option>
+              <option value="4" selected>4 Mbps — bilanciato</option>
+              <option value="8">8 Mbps — alta qualità</option>
+              <option value="16">16 Mbps — quasi lossless</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Device</label>
+            <select id="device">
+              <option value="auto" selected>Auto (GPU se disponibile)</option>
+              <option value="cuda">CUDA (GPU NVIDIA)</option>
+              <option value="cpu">CPU (lento)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <p class="card-title">Avanzate</p>
+        <div class="grid">
+          <div class="field">
+            <label>Downsample ratio</label>
+            <select id="downsample_ratio">
+              <option value="none" selected>Auto (consigliato)</option>
+              <option value="1.0">1.0 — risoluzione piena</option>
+              <option value="0.75">0.75</option>
+              <option value="0.5">0.5 — 2× più veloce</option>
+              <option value="0.25">0.25 — 4× più veloce</option>
+            </select>
+            <span class="hint">Più basso = più veloce, bordi meno precisi</span>
+          </div>
+          <div class="field">
+            <label>Seq chunk</label>
+            <select id="seq_chunk">
+              <option value="1" selected>1</option>
+              <option value="2">2</option>
+              <option value="4">4</option>
+              <option value="8">8</option>
+            </select>
+            <span class="hint">Più alto = più VRAM, migliore consistenza temporale</span>
+          </div>
+          <div class="field">
+            <label>DataLoader workers</label>
+            <select id="num_workers">
+              <option value="0" selected>0 (default sicuro)</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="4">4</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="action-row">
+        <button class="btn btn-primary" id="run-btn" onclick="runProcess()">
+          <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+          Avvia
+        </button>
+        <button class="btn btn-danger" id="cancel-btn" onclick="cancelProcess()" style="display:none;">
+          <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+          Annulla
+        </button>
+        <span id="status-badge" style="display:none;" class="status-badge"></span>
+      </div>
+    </div>
+
+    <!-- ── Page: Sfondo Immagine ── -->
+    <div class="page" id="page-imgbg">
+      <p class="page-title">Rimozione sfondo immagine</p>
+
+      <div class="card">
+        <p class="card-title">File</p>
+        <div class="grid">
+          <div class="field field-full">
+            <label>Immagine di input</label>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="text" id="img_input" placeholder="/percorso/immagine.jpg" style="flex:1;" />
+              <button class="btn btn-upload" onclick="document.getElementById('img-file-picker').click()">
+                <svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg>
+                Carica
+              </button>
+              <input type="file" id="img-file-picker" accept="image/*" style="display:none;" onchange="uploadImage(this)" />
+            </div>
+            <span class="hint" id="img-upload-hint" style="display:none;"></span>
+          </div>
+          <div class="field field-full">
+            <label>Output (PNG trasparente)</label>
+            <input type="text" id="img_output" placeholder="/percorso/output_nobg.png" />
+          </div>
+        </div>
+        <div class="action-row">
+          <button class="btn btn-primary" id="img-run-btn" onclick="runImageProcess()">
+            <svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-1.1 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+            Rimuovi sfondo
           </button>
-          <input type="file" id="file-picker" accept="video/*" style="display:none;" onchange="uploadFile(this)" />
+          <span id="img-status-badge" style="display:none;" class="status-badge"></span>
         </div>
-        <span class="hint" id="upload-hint" style="display:none;"></span>
       </div>
-      <div class="field field-full">
-        <label for="output_composition">Output — composition (video with background removed)</label>
-        <input type="text" id="output_composition" placeholder="C:\Videos\output.mp4 (leave blank to skip)" />
-      </div>
-      <div class="field">
-        <label for="output_alpha">Output — alpha mask</label>
-        <input type="text" id="output_alpha" placeholder="C:\Videos\alpha.mp4 (optional)" />
-      </div>
-      <div class="field">
-        <label for="output_foreground">Output — foreground only</label>
-        <input type="text" id="output_foreground" placeholder="C:\Videos\fg.mp4 (optional)" />
+
+      <div id="img-preview-wrap" style="display:none;">
+        <div class="preview-grid">
+          <div>
+            <p class="preview-label">Originale</p>
+            <img id="img-before" class="preview-img" />
+          </div>
+          <div class="preview-checker">
+            <img id="img-after" class="preview-img" style="border:none;" />
+          </div>
+        </div>
+        <p class="save-hint" id="img-output-hint"></p>
       </div>
     </div>
-  </div>
 
-  <!-- Model & output -->
-  <div class="card">
-    <h2>Model &amp; Output</h2>
-    <div class="grid">
-      <div class="field">
-        <label for="model_name">Model</label>
-        <select id="model_name">
-          <option value="mobilenetv3">mobilenetv3 — fast, lightweight</option>
-          <option value="resnet50">resnet50 — accurate, slower</option>
-        </select>
-      </div>
-      <div class="field">
-        <label for="output_type">Output type</label>
-        <select id="output_type">
-          <option value="video">video (.mp4)</option>
-          <option value="png_sequence">PNG sequence (RGBA, transparent)</option>
-        </select>
-      </div>
-      <div class="field">
-        <label for="output_video_mbps">Video bitrate (Mbps)</label>
-        <select id="output_video_mbps">
-          <option value="1">1 Mbps — small file</option>
-          <option value="2">2 Mbps</option>
-          <option value="4" selected>4 Mbps — balanced</option>
-          <option value="8">8 Mbps — high quality</option>
-          <option value="16">16 Mbps — lossless-like</option>
-        </select>
-        <span class="hint">Only used for video output type</span>
-      </div>
-      <div class="field">
-        <label for="device">Device</label>
-        <select id="device">
-          <option value="auto" selected>Auto (GPU if available)</option>
-          <option value="cuda">CUDA (NVIDIA GPU)</option>
-          <option value="cpu">CPU (slow)</option>
-        </select>
-      </div>
-    </div>
-  </div>
+    <!-- ── Page: Upscaling Immagine ── -->
+    <div class="page" id="page-imgup">
+      <p class="page-title">Upscaling immagine</p>
 
-  <!-- Advanced -->
-  <div class="card">
-    <h2>Advanced</h2>
-    <div class="grid">
-      <div class="field">
-        <label for="downsample_ratio">Downsample ratio</label>
-        <select id="downsample_ratio">
-          <option value="none" selected>Auto (recommended)</option>
-          <option value="1.0">1.0 — full resolution</option>
-          <option value="0.75">0.75</option>
-          <option value="0.5">0.5 — 2× faster, less detail</option>
-          <option value="0.25">0.25 — 4× faster, rough</option>
-        </select>
-        <span class="hint">Lower = faster but less precise edges</span>
-      </div>
-      <div class="field">
-        <label for="seq_chunk">Sequence chunk size</label>
-        <select id="seq_chunk">
-          <option value="1" selected>1</option>
-          <option value="2">2</option>
-          <option value="4">4</option>
-          <option value="8">8</option>
-        </select>
-        <span class="hint">Higher = more VRAM, better temporal consistency</span>
-      </div>
-      <div class="field">
-        <label for="num_workers">DataLoader workers</label>
-        <select id="num_workers">
-          <option value="0" selected>0 (safe default)</option>
-          <option value="1">1</option>
-          <option value="2">2</option>
-          <option value="4">4</option>
-        </select>
-      </div>
-    </div>
-  </div>
-
-  <!-- Image Background Removal -->
-  <div class="card">
-    <h2>Rimozione sfondo immagini</h2>
-    <div class="grid">
-      <div class="field field-full">
-        <label>Immagine di input</label>
-        <div style="display:flex; gap:8px; align-items:center;">
-          <input type="text" id="img_input" placeholder="/percorso/immagine.jpg" style="flex:1;" />
-          <button class="btn btn-upload" type="button" onclick="document.getElementById('img-file-picker').click()">
-            <svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg>
-            Carica immagine
+      <div class="card">
+        <p class="card-title">File e impostazioni</p>
+        <div class="grid">
+          <div class="field field-full">
+            <label>Immagine di input</label>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="text" id="usc_img_input" placeholder="/percorso/immagine.jpg" style="flex:1;" />
+              <button class="btn btn-upload" onclick="document.getElementById('usc-img-picker').click()">
+                <svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg>
+                Carica
+              </button>
+              <input type="file" id="usc-img-picker" accept="image/*" style="display:none;" onchange="uploadUpscaleImage(this)" />
+            </div>
+            <span class="hint" id="usc-img-hint" style="display:none;"></span>
+          </div>
+          <div class="field field-full">
+            <label>Output</label>
+            <input type="text" id="usc_img_output" placeholder="/percorso/output_upscaled.png" />
+          </div>
+          <div class="field">
+            <label>Scala</label>
+            <select id="usc_img_scale">
+              <option value="2">2× — raddoppia risoluzione</option>
+              <option value="4">4× — quadruplica risoluzione</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Metodo</label>
+            <select id="usc_img_method">
+              <option value="lanczos">Lanczos (classico, nessuna dipendenza)</option>
+              <option value="realesrgan">Real-ESRGAN (AI, richiede: pip install realesrgan)</option>
+            </select>
+          </div>
+        </div>
+        <div class="action-row">
+          <button class="btn btn-primary" id="usc-img-run-btn" onclick="runUpscaleImage()">
+            <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+            Upscala
           </button>
-          <input type="file" id="img-file-picker" accept="image/*" style="display:none;" onchange="uploadImage(this)" />
-        </div>
-        <span class="hint" id="img-upload-hint" style="display:none;"></span>
-      </div>
-      <div class="field field-full">
-        <label for="img_output">Output (PNG trasparente)</label>
-        <input type="text" id="img_output" placeholder="/percorso/output_nobg.png" />
-      </div>
-    </div>
-    <div style="display:flex; align-items:center; gap:12px; margin-top:1rem;">
-      <button class="btn btn-primary" id="img-run-btn" type="button" onclick="runImageProcess()">
-        <svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-1.1 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
-        Rimuovi sfondo
-      </button>
-      <span id="img-status-badge" style="display:none;" class="status-badge"></span>
-    </div>
-    <div id="img-preview-wrap" style="display:none; margin-top:1rem;">
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
-        <div>
-          <p style="font-size:.75rem; color:var(--muted); margin-bottom:.4rem; text-transform:uppercase; letter-spacing:.06em;">Originale</p>
-          <img id="img-before" style="width:100%; border-radius:6px; border:1px solid var(--border);" />
-        </div>
-        <div style="background: repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 0 0 / 16px 16px; border-radius:6px; border:1px solid var(--border);">
-          <img id="img-after" style="width:100%; border-radius:6px;" />
+          <span id="usc-img-badge" style="display:none;" class="status-badge"></span>
         </div>
       </div>
-      <p style="font-size:.75rem; color:var(--muted); margin-top:.5rem;" id="img-output-hint"></p>
-    </div>
-  </div>
 
-  <!-- Upscaling Immagini -->
-  <div class="card">
-    <h2>Upscaling immagini</h2>
-    <div class="grid">
-      <div class="field field-full">
-        <label>Immagine di input</label>
-        <div style="display:flex; gap:8px; align-items:center;">
-          <input type="text" id="usc_img_input" placeholder="/percorso/immagine.jpg" style="flex:1;" />
-          <button class="btn btn-upload" type="button" onclick="document.getElementById('usc-img-picker').click()">
-            <svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg>
-            Carica immagine
+      <div id="usc-img-preview" style="display:none;">
+        <div class="preview-grid">
+          <div>
+            <p class="preview-label">Originale</p>
+            <img id="usc-img-before" class="preview-img" style="image-rendering:pixelated;" />
+          </div>
+          <div>
+            <p class="preview-label">Upscalato</p>
+            <img id="usc-img-after" class="preview-img" />
+          </div>
+        </div>
+        <p class="save-hint" id="usc-img-save-hint"></p>
+      </div>
+    </div>
+
+    <!-- ── Page: Upscaling Video ── -->
+    <div class="page" id="page-vidup">
+      <p class="page-title">Upscaling video</p>
+
+      <div class="card">
+        <p class="card-title">File e impostazioni</p>
+        <div class="grid">
+          <div class="field field-full">
+            <label>Video di input</label>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="text" id="usc_vid_input" placeholder="C:\Videos\input.mp4" style="flex:1;" />
+              <button class="btn btn-upload" onclick="document.getElementById('usc-vid-picker').click()">
+                <svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg>
+                Carica
+              </button>
+              <input type="file" id="usc-vid-picker" accept="video/*" style="display:none;" onchange="uploadUpscaleVideo(this)" />
+            </div>
+            <span class="hint" id="usc-vid-hint" style="display:none;"></span>
+          </div>
+          <div class="field field-full">
+            <label>Output</label>
+            <input type="text" id="usc_vid_output" placeholder="C:\Videos\output_upscaled.mp4" />
+          </div>
+          <div class="field">
+            <label>Scala</label>
+            <select id="usc_vid_scale">
+              <option value="2">2× — raddoppia risoluzione</option>
+              <option value="4">4× — quadruplica risoluzione</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Metodo</label>
+            <select id="usc_vid_method">
+              <option value="lanczos">Lanczos (classico, nessuna dipendenza)</option>
+              <option value="realesrgan">Real-ESRGAN (AI, richiede: pip install realesrgan)</option>
+            </select>
+          </div>
+        </div>
+        <div class="action-row">
+          <button class="btn btn-primary" id="usc-vid-run-btn" onclick="runUpscaleVideo()">
+            <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            Avvia upscaling
           </button>
-          <input type="file" id="usc-img-picker" accept="image/*" style="display:none;" onchange="uploadUpscaleImage(this)" />
-        </div>
-        <span class="hint" id="usc-img-hint" style="display:none;"></span>
-      </div>
-      <div class="field field-full">
-        <label for="usc_img_output">Output</label>
-        <input type="text" id="usc_img_output" placeholder="/percorso/output_4x.png" />
-      </div>
-      <div class="field">
-        <label for="usc_img_scale">Scala</label>
-        <select id="usc_img_scale">
-          <option value="2">2× (raddoppia risoluzione)</option>
-          <option value="4">4× (quadruplica risoluzione)</option>
-        </select>
-      </div>
-      <div class="field">
-        <label for="usc_img_method">Metodo</label>
-        <select id="usc_img_method">
-          <option value="lanczos">Lanczos (classico, veloce)</option>
-          <option value="realesrgan">Real-ESRGAN (AI, richiede pip install realesrgan)</option>
-        </select>
-      </div>
-    </div>
-    <div style="display:flex; align-items:center; gap:12px; margin-top:1rem;">
-      <button class="btn btn-primary" id="usc-img-run-btn" type="button" onclick="runUpscaleImage()">
-        <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-        Upscala immagine
-      </button>
-      <span id="usc-img-badge" style="display:none;" class="status-badge"></span>
-    </div>
-    <div id="usc-img-preview" style="display:none; margin-top:1rem;">
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
-        <div>
-          <p style="font-size:.75rem; color:var(--muted); margin-bottom:.4rem; text-transform:uppercase; letter-spacing:.06em;">Originale</p>
-          <img id="usc-img-before" style="width:100%; border-radius:6px; border:1px solid var(--border); image-rendering:pixelated;" />
-        </div>
-        <div>
-          <p style="font-size:.75rem; color:var(--muted); margin-bottom:.4rem; text-transform:uppercase; letter-spacing:.06em;">Upscalato</p>
-          <img id="usc-img-after" style="width:100%; border-radius:6px; border:1px solid var(--border);" />
-        </div>
-      </div>
-      <p style="font-size:.75rem; color:var(--muted); margin-top:.5rem;" id="usc-img-save-hint"></p>
-    </div>
-  </div>
-
-  <!-- Upscaling Video -->
-  <div class="card">
-    <h2>Upscaling video</h2>
-    <div class="grid">
-      <div class="field field-full">
-        <label>Video di input</label>
-        <div style="display:flex; gap:8px; align-items:center;">
-          <input type="text" id="usc_vid_input" placeholder="C:\Videos\input.mp4" style="flex:1;" />
-          <button class="btn btn-upload" type="button" onclick="document.getElementById('usc-vid-picker').click()">
-            <svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg>
-            Carica video
+          <button class="btn btn-danger" id="usc-vid-cancel-btn" onclick="cancelProcess()" style="display:none;">
+            <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+            Annulla
           </button>
-          <input type="file" id="usc-vid-picker" accept="video/*" style="display:none;" onchange="uploadUpscaleVideo(this)" />
+          <span id="usc-vid-badge" style="display:none;" class="status-badge"></span>
         </div>
-        <span class="hint" id="usc-vid-hint" style="display:none;"></span>
-      </div>
-      <div class="field field-full">
-        <label for="usc_vid_output">Output</label>
-        <input type="text" id="usc_vid_output" placeholder="C:\Videos\output_upscaled.mp4" />
-      </div>
-      <div class="field">
-        <label for="usc_vid_scale">Scala</label>
-        <select id="usc_vid_scale">
-          <option value="2">2× (raddoppia risoluzione)</option>
-          <option value="4">4× (quadruplica risoluzione)</option>
-        </select>
-      </div>
-      <div class="field">
-        <label for="usc_vid_method">Metodo</label>
-        <select id="usc_vid_method">
-          <option value="lanczos">Lanczos (classico, veloce)</option>
-          <option value="realesrgan">Real-ESRGAN (AI, richiede pip install realesrgan)</option>
-        </select>
       </div>
     </div>
-    <div style="display:flex; align-items:center; gap:12px; margin-top:1rem;">
-      <button class="btn btn-primary" id="usc-vid-run-btn" type="button" onclick="runUpscaleVideo()">
-        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-        Upscala video
-      </button>
-      <span class="hint">Il progresso appare nel pannello sottostante</span>
+
+  </div><!-- /page-content -->
+
+  <!-- ── Progress panel (shared, bottom strip) ── -->
+  <div class="progress-panel" id="progress-panel">
+    <div class="progress-bar-wrap" id="progress-bar-wrap">
+      <div id="progress-bar"></div>
     </div>
-  </div>
-
-  <!-- Action -->
-  <div style="display:flex; align-items:center; gap:12px; margin-bottom:1.25rem;">
-    <button class="btn btn-primary" id="run-btn" onclick="runProcess()">
-      <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-      Process Video
-    </button>
-    <button class="btn btn-danger" id="cancel-btn" onclick="cancelProcess()" style="display:none;">
-      <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
-      Cancel
-    </button>
-    <span id="status-badge" style="display:none;"></span>
-  </div>
-
-  <!-- Progress -->
-  <div class="card" id="progress-card">
-    <h2>Progress</h2>
-    <div id="progress-bar-wrap"><div id="progress-bar"></div></div>
     <div id="log"></div>
   </div>
 
-</div>
+</div><!-- /main-wrap -->
 
 <script>
   let es = null;
   let logLines = 0;
 
-  async function cancelProcess() {
-    const btn = document.getElementById('cancel-btn');
-    btn.disabled = true;
-    await fetch('/api/cancel', { method: 'POST' });
-    btn.disabled = false;
+  function showPage(id, navBtn) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    if (navBtn) navBtn.classList.add('active');
   }
 
-  function setRunning(running) {
-    document.getElementById('run-btn').disabled = running;
-    document.getElementById('cancel-btn').style.display = running ? 'inline-flex' : 'none';
+  /* ── Progress panel ── */
+  function showProgress() {
+    document.getElementById('progress-panel').classList.add('visible');
   }
-
-  async function uploadFile(input) {
-    const file = input.files[0];
-    if (!file) return;
-    const hint = document.getElementById('upload-hint');
-    const uploadBtn = document.querySelector('.btn-upload');
-    uploadBtn.disabled = true;
-    hint.style.display = 'block';
-    hint.style.color = 'var(--muted)';
-    hint.textContent = `Caricamento "${file.name}"…`;
-
-    const fd = new FormData();
-    fd.append('file', file);
-    try {
-      const res = await fetch('/api/upload', { method: 'POST', body: fd });
-      const data = await res.json();
-      if (data.ok) {
-        document.getElementById('input_source').value = data.path;
-        // Auto-fill output composition only if empty
-        const outComp = document.getElementById('output_composition');
-        if (!outComp.value.trim()) outComp.value = data.output_path;
-        hint.style.color = 'var(--success)';
-        hint.textContent = `✓ "${file.name}" pronto`;
-      } else {
-        hint.style.color = 'var(--error)';
-        hint.textContent = 'Errore durante il caricamento.';
-      }
-    } catch (e) {
-      hint.style.color = 'var(--error)';
-      hint.textContent = 'Errore di rete.';
-    }
-    uploadBtn.disabled = false;
-    input.value = '';
+  function hideProgress() {
+    document.getElementById('progress-panel').classList.remove('visible');
   }
 
   function appendLog(msg, cls) {
@@ -503,279 +643,204 @@
     logLines++;
   }
 
-  function setBadge(text, cls) {
-    const b = document.getElementById('status-badge');
+  function setProgress(pct) {
+    document.getElementById('progress-bar').style.width = pct + '%';
+  }
+
+  function setBadge(elId, text, cls) {
+    const b = document.getElementById(elId);
+    if (!b) return;
     b.textContent = text;
     b.className = 'status-badge ' + cls;
     b.style.display = 'inline-block';
   }
 
-  function setProgress(pct) {
-    document.getElementById('progress-bar').style.width = pct + '%';
+  /* ── RVM video ── */
+  function setRunning(running) {
+    document.getElementById('run-btn').disabled = running;
+    document.getElementById('cancel-btn').style.display = running ? 'inline-flex' : 'none';
   }
 
-  async function uploadImage(input) {
+  async function cancelProcess() {
+    await fetch('/api/cancel', { method: 'POST' });
+  }
+
+  async function uploadFile(input) {
     const file = input.files[0];
     if (!file) return;
-    const hint = document.getElementById('img-upload-hint');
-    const btn = document.querySelector('#img-file-picker + button') || document.querySelectorAll('.btn-upload')[1];
-    hint.style.display = 'block';
-    hint.style.color = 'var(--muted)';
+    const hint = document.getElementById('upload-hint');
+    hint.style.display = 'block'; hint.style.color = 'var(--muted)';
     hint.textContent = `Caricamento "${file.name}"…`;
-
-    const fd = new FormData();
-    fd.append('file', file);
+    const fd = new FormData(); fd.append('file', file);
     try {
-      const res = await fetch('/api/upload-image', { method: 'POST', body: fd });
-      const data = await res.json();
+      const data = await fetch('/api/upload', { method: 'POST', body: fd }).then(r => r.json());
+      if (data.ok) {
+        document.getElementById('input_source').value = data.path;
+        const out = document.getElementById('output_composition');
+        if (!out.value.trim()) out.value = data.output_path;
+        hint.style.color = 'var(--success)';
+        hint.textContent = `✓ "${file.name}" pronto`;
+      } else { hint.style.color = 'var(--error)'; hint.textContent = 'Errore caricamento.'; }
+    } catch { hint.style.color = 'var(--error)'; hint.textContent = 'Errore di rete.'; }
+    input.value = '';
+  }
+
+  async function runProcess() {
+    const input = document.getElementById('input_source').value.trim();
+    if (!input) { alert('Inserisci il percorso del video di input.'); return; }
+    const comp  = document.getElementById('output_composition').value.trim();
+    const alpha = document.getElementById('output_alpha').value.trim();
+    const fg    = document.getElementById('output_foreground').value.trim();
+    if (!comp && !alpha && !fg) { alert('Specifica almeno un output.'); return; }
+
+    setRunning(true);
+    document.getElementById('log').innerHTML = '';
+    logLines = 0; setProgress(5); showProgress();
+    setBadge('status-badge', 'In corso…', 'badge-running');
+
+    const payload = {
+      model_name: document.getElementById('model_name').value,
+      input_source: input,
+      output_composition: comp, output_alpha: alpha, output_foreground: fg,
+      output_type: document.getElementById('output_type').value,
+      downsample_ratio: document.getElementById('downsample_ratio').value,
+      output_video_mbps: parseFloat(document.getElementById('output_video_mbps').value),
+      seq_chunk: parseInt(document.getElementById('seq_chunk').value),
+      num_workers: parseInt(document.getElementById('num_workers').value),
+      device: document.getElementById('device').value,
+    };
+
+    const data = await fetch('/api/process', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    }).then(r => r.json());
+
+    if (!data.ok) {
+      appendLog('Errore: ' + data.error, 'log-error');
+      setBadge('status-badge', 'Errore', 'badge-error');
+      setRunning(false); return;
+    }
+    listenEvents('status-badge', () => setRunning(false));
+  }
+
+  /* ── Image bg removal ── */
+  async function uploadImage(input) {
+    const file = input.files[0]; if (!file) return;
+    const hint = document.getElementById('img-upload-hint');
+    hint.style.display = 'block'; hint.style.color = 'var(--muted)';
+    hint.textContent = `Caricamento "${file.name}"…`;
+    const fd = new FormData(); fd.append('file', file);
+    try {
+      const data = await fetch('/api/upload-image', { method: 'POST', body: fd }).then(r => r.json());
       if (data.ok) {
         document.getElementById('img_input').value = data.path;
         if (!document.getElementById('img_output').value.trim())
           document.getElementById('img_output').value = data.output_path;
-        // Show before preview
         document.getElementById('img-before').src = URL.createObjectURL(file);
         document.getElementById('img-preview-wrap').style.display = 'block';
         document.getElementById('img-after').src = '';
-        hint.style.color = 'var(--success)';
-        hint.textContent = `✓ "${file.name}" pronto`;
-      } else {
-        hint.style.color = 'var(--error)';
-        hint.textContent = 'Errore durante il caricamento.';
-      }
-    } catch (e) {
-      hint.style.color = 'var(--error)';
-      hint.textContent = 'Errore di rete.';
-    }
+        hint.style.color = 'var(--success)'; hint.textContent = `✓ "${file.name}" pronto`;
+      } else { hint.style.color = 'var(--error)'; hint.textContent = 'Errore caricamento.'; }
+    } catch { hint.style.color = 'var(--error)'; hint.textContent = 'Errore di rete.'; }
     input.value = '';
   }
 
   async function runImageProcess() {
     const inputPath = document.getElementById('img_input').value.trim();
     const outputPath = document.getElementById('img_output').value.trim();
-    if (!inputPath) { alert('Seleziona un\'immagine prima.'); return; }
+    if (!inputPath) { alert("Seleziona un'immagine prima."); return; }
     if (!outputPath) { alert('Specifica un percorso di output.'); return; }
-
     const btn = document.getElementById('img-run-btn');
-    const badge = document.getElementById('img-status-badge');
     btn.disabled = true;
-    badge.style.display = 'inline-block';
-    badge.className = 'status-badge badge-running';
-    badge.textContent = 'Elaborazione…';
-
+    setBadge('img-status-badge', 'Elaborazione…', 'badge-running');
     try {
-      const res = await fetch('/api/process-image', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+      const data = await fetch('/api/process-image', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ input_path: inputPath, output_path: outputPath }),
-      });
-      const data = await res.json();
+      }).then(r => r.json());
       if (data.ok) {
-        badge.className = 'status-badge badge-done';
-        badge.textContent = 'Fatto ✓';
+        setBadge('img-status-badge', 'Fatto ✓', 'badge-done');
         document.getElementById('img-preview-wrap').style.display = 'block';
         document.getElementById('img-after').src = '/api/preview-image?path=' + encodeURIComponent(data.output_path) + '&t=' + Date.now();
         document.getElementById('img-output-hint').textContent = '✓ Salvato in: ' + data.output_path;
       } else {
-        badge.className = 'status-badge badge-error';
-        badge.textContent = 'Errore';
+        setBadge('img-status-badge', 'Errore', 'badge-error');
         alert('Errore: ' + data.error);
       }
-    } catch (e) {
-      badge.className = 'status-badge badge-error';
-      badge.textContent = 'Errore';
-    }
+    } catch { setBadge('img-status-badge', 'Errore', 'badge-error'); }
     btn.disabled = false;
   }
 
-  async function runProcess() {
-    const btn = document.getElementById('run-btn');
-    const input = document.getElementById('input_source').value.trim();
-    if (!input) { alert('Please enter an input video path.'); return; }
-
-    const comp = document.getElementById('output_composition').value.trim();
-    const alpha = document.getElementById('output_alpha').value.trim();
-    const fg    = document.getElementById('output_foreground').value.trim();
-    if (!comp && !alpha && !fg) {
-      alert('Please specify at least one output path (composition, alpha, or foreground).');
-      return;
-    }
-
-    setRunning(true);
-    document.getElementById('progress-card').style.display = 'block';
-    document.getElementById('log').innerHTML = '';
-    logLines = 0;
-    setProgress(5);
-    setBadge('Running…', 'badge-running');
-
-    const payload = {
-      model_name:         document.getElementById('model_name').value,
-      input_source:       input,
-      output_composition: comp,
-      output_alpha:       alpha,
-      output_foreground:  fg,
-      output_type:        document.getElementById('output_type').value,
-      downsample_ratio:   document.getElementById('downsample_ratio').value,
-      output_video_mbps:  parseFloat(document.getElementById('output_video_mbps').value),
-      seq_chunk:          parseInt(document.getElementById('seq_chunk').value),
-      num_workers:        parseInt(document.getElementById('num_workers').value),
-      device:             document.getElementById('device').value,
-    };
-
-    const res = await fetch('/api/process', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (!data.ok) {
-      appendLog('Error: ' + data.error, 'log-error');
-      setBadge('Error', 'badge-error');
-      setRunning(false);
-      return;
-    }
-
-    if (es) es.close();
-    es = new EventSource('/api/events');
-    es.onmessage = function(e) {
-      const d = JSON.parse(e.data);
-      const msg = d.msg;
-      if (msg === '__done__') {
-        setProgress(100);
-        setBadge('Done', 'badge-done');
-        appendLog('Finished.', 'log-done');
-        setRunning(false);
-        es.close();
-        return;
-      }
-      if (msg === '__cancelled__') {
-        setProgress(0);
-        setBadge('Cancelled', 'badge-error');
-        appendLog('Cancelled.', 'log-error');
-        setRunning(false);
-        es.close();
-        return;
-      }
-      const isErr = msg.startsWith('ERROR:');
-      appendLog(msg, isErr ? 'log-error' : '');
-      if (isErr) { setBadge('Error', 'badge-error'); setRunning(false); es.close(); return; }
-      const pct = Math.min(5 + logLines * 15, 90);
-      setProgress(pct);
-    };
-    es.onerror = function() {
-      // Connection lost: stop spinner so UI is not stuck. Job may still finish server-side.
-      appendLog('Connessione persa al server.', 'log-error');
-      setBadge('Disconnesso', 'badge-error');
-      setRunning(false);
-      es.close();
-    };
-  }
-
+  /* ── Image upscaling ── */
   async function uploadUpscaleImage(input) {
-    const file = input.files[0];
-    if (!file) return;
+    const file = input.files[0]; if (!file) return;
     const hint = document.getElementById('usc-img-hint');
-    hint.style.display = 'block';
-    hint.style.color = 'var(--muted)';
+    hint.style.display = 'block'; hint.style.color = 'var(--muted)';
     hint.textContent = `Caricamento "${file.name}"…`;
-
-    const fd = new FormData();
-    fd.append('file', file);
+    const fd = new FormData(); fd.append('file', file);
     try {
-      const res = await fetch('/api/upload-image', { method: 'POST', body: fd });
-      const data = await res.json();
+      const data = await fetch('/api/upload-image', { method: 'POST', body: fd }).then(r => r.json());
       if (data.ok) {
         document.getElementById('usc_img_input').value = data.path;
-        const scale = document.getElementById('usc_img_scale').value;
-        const ext = data.output_path.split('.').pop();
         const base = data.path.replace(/\.[^.]+$/, '');
+        const ext = data.path.split('.').pop();
         if (!document.getElementById('usc_img_output').value.trim())
           document.getElementById('usc_img_output').value = base + '_upscaled.' + ext;
         document.getElementById('usc-img-before').src = URL.createObjectURL(file);
         document.getElementById('usc-img-preview').style.display = 'block';
         document.getElementById('usc-img-after').src = '';
-        hint.style.color = 'var(--success)';
-        hint.textContent = `✓ "${file.name}" pronto`;
-      } else {
-        hint.style.color = 'var(--error)';
-        hint.textContent = 'Errore durante il caricamento.';
-      }
-    } catch (e) {
-      hint.style.color = 'var(--error)';
-      hint.textContent = 'Errore di rete.';
-    }
+        hint.style.color = 'var(--success)'; hint.textContent = `✓ "${file.name}" pronto`;
+      } else { hint.style.color = 'var(--error)'; hint.textContent = 'Errore caricamento.'; }
+    } catch { hint.style.color = 'var(--error)'; hint.textContent = 'Errore di rete.'; }
     input.value = '';
   }
 
   async function runUpscaleImage() {
     const inputPath = document.getElementById('usc_img_input').value.trim();
     const outputPath = document.getElementById('usc_img_output').value.trim();
-    if (!inputPath) { alert('Seleziona un\'immagine prima.'); return; }
+    if (!inputPath) { alert("Seleziona un'immagine prima."); return; }
     if (!outputPath) { alert('Specifica un percorso di output.'); return; }
-
     const btn = document.getElementById('usc-img-run-btn');
-    const badge = document.getElementById('usc-img-badge');
     btn.disabled = true;
-    badge.style.display = 'inline-block';
-    badge.className = 'status-badge badge-running';
-    badge.textContent = 'Elaborazione…';
-
+    setBadge('usc-img-badge', 'Elaborazione…', 'badge-running');
     try {
-      const res = await fetch('/api/upscale-image', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+      const data = await fetch('/api/upscale-image', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
-          input_path: inputPath,
-          output_path: outputPath,
+          input_path: inputPath, output_path: outputPath,
           method: document.getElementById('usc_img_method').value,
           scale: parseInt(document.getElementById('usc_img_scale').value),
         }),
-      });
-      const data = await res.json();
+      }).then(r => r.json());
       if (data.ok) {
-        badge.className = 'status-badge badge-done';
-        badge.textContent = 'Fatto ✓';
+        setBadge('usc-img-badge', 'Fatto ✓', 'badge-done');
         document.getElementById('usc-img-preview').style.display = 'block';
         document.getElementById('usc-img-after').src = '/api/preview-image?path=' + encodeURIComponent(data.output_path) + '&t=' + Date.now();
         document.getElementById('usc-img-save-hint').textContent = '✓ Salvato in: ' + data.output_path;
       } else {
-        badge.className = 'status-badge badge-error';
-        badge.textContent = 'Errore';
+        setBadge('usc-img-badge', 'Errore', 'badge-error');
         alert('Errore: ' + data.error);
       }
-    } catch (e) {
-      badge.className = 'status-badge badge-error';
-      badge.textContent = 'Errore';
-    }
+    } catch { setBadge('usc-img-badge', 'Errore', 'badge-error'); }
     btn.disabled = false;
   }
 
+  /* ── Video upscaling ── */
   async function uploadUpscaleVideo(input) {
-    const file = input.files[0];
-    if (!file) return;
+    const file = input.files[0]; if (!file) return;
     const hint = document.getElementById('usc-vid-hint');
-    hint.style.display = 'block';
-    hint.style.color = 'var(--muted)';
+    hint.style.display = 'block'; hint.style.color = 'var(--muted)';
     hint.textContent = `Caricamento "${file.name}"…`;
-
-    const fd = new FormData();
-    fd.append('file', file);
+    const fd = new FormData(); fd.append('file', file);
     try {
-      const res = await fetch('/api/upload-upscale', { method: 'POST', body: fd });
-      const data = await res.json();
+      const data = await fetch('/api/upload-upscale', { method: 'POST', body: fd }).then(r => r.json());
       if (data.ok) {
         document.getElementById('usc_vid_input').value = data.path;
         if (!document.getElementById('usc_vid_output').value.trim())
           document.getElementById('usc_vid_output').value = data.output_path;
-        hint.style.color = 'var(--success)';
-        hint.textContent = `✓ "${file.name}" pronto`;
-      } else {
-        hint.style.color = 'var(--error)';
-        hint.textContent = 'Errore durante il caricamento.';
-      }
-    } catch (e) {
-      hint.style.color = 'var(--error)';
-      hint.textContent = 'Errore di rete.';
-    }
+        hint.style.color = 'var(--success)'; hint.textContent = `✓ "${file.name}" pronto`;
+      } else { hint.style.color = 'var(--error)'; hint.textContent = 'Errore caricamento.'; }
+    } catch { hint.style.color = 'var(--error)'; hint.textContent = 'Errore di rete.'; }
     input.value = '';
   }
 
@@ -785,74 +850,62 @@
     if (!inputPath) { alert('Seleziona un video prima.'); return; }
     if (!outputPath) { alert('Specifica un percorso di output.'); return; }
 
-    setRunning(true);
-    document.getElementById('usc-vid-run-btn').disabled = true;
-    document.getElementById('progress-card').style.display = 'block';
+    const runBtn = document.getElementById('usc-vid-run-btn');
+    const cancelBtn = document.getElementById('usc-vid-cancel-btn');
+    runBtn.disabled = true;
+    cancelBtn.style.display = 'inline-flex';
     document.getElementById('log').innerHTML = '';
-    logLines = 0;
-    setProgress(5);
-    setBadge('Upscaling…', 'badge-running');
+    logLines = 0; setProgress(5); showProgress();
+    setBadge('usc-vid-badge', 'In corso…', 'badge-running');
 
-    const res = await fetch('/api/upscale-video', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+    const data = await fetch('/api/upscale-video', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
-        input_path: inputPath,
-        output_path: outputPath,
+        input_path: inputPath, output_path: outputPath,
         method: document.getElementById('usc_vid_method').value,
         scale: parseInt(document.getElementById('usc_vid_scale').value),
       }),
-    });
-    const data = await res.json();
+    }).then(r => r.json());
+
     if (!data.ok) {
       appendLog('Errore: ' + data.error, 'log-error');
-      setBadge('Errore', 'badge-error');
-      setRunning(false);
-      document.getElementById('usc-vid-run-btn').disabled = false;
-      return;
+      setBadge('usc-vid-badge', 'Errore', 'badge-error');
+      runBtn.disabled = false; cancelBtn.style.display = 'none'; return;
     }
 
+    listenEvents('usc-vid-badge', () => {
+      runBtn.disabled = false;
+      cancelBtn.style.display = 'none';
+    });
+  }
+
+  /* ── Shared SSE listener ── */
+  function listenEvents(badgeId, onEnd) {
     if (es) es.close();
     es = new EventSource('/api/events');
     es.onmessage = function(e) {
-      const d = JSON.parse(e.data);
-      const msg = d.msg;
+      const msg = JSON.parse(e.data).msg;
       if (msg === '__done__') {
         setProgress(100);
-        setBadge('Done', 'badge-done');
-        appendLog('Upscaling completato.', 'log-done');
-        setRunning(false);
-        document.getElementById('usc-vid-run-btn').disabled = false;
-        es.close();
-        return;
+        setBadge(badgeId, 'Completato ✓', 'badge-done');
+        appendLog('Completato.', 'log-done');
+        onEnd(); es.close(); return;
       }
       if (msg === '__cancelled__') {
         setProgress(0);
-        setBadge('Annullato', 'badge-error');
+        setBadge(badgeId, 'Annullato', 'badge-error');
         appendLog('Annullato.', 'log-error');
-        setRunning(false);
-        document.getElementById('usc-vid-run-btn').disabled = false;
-        es.close();
-        return;
+        onEnd(); es.close(); return;
       }
       const isErr = msg.startsWith('ERROR:');
       appendLog(msg, isErr ? 'log-error' : '');
-      if (isErr) {
-        setBadge('Errore', 'badge-error');
-        setRunning(false);
-        document.getElementById('usc-vid-run-btn').disabled = false;
-        es.close();
-        return;
-      }
-      const pct = Math.min(5 + logLines * 3, 90);
-      setProgress(pct);
+      if (isErr) { setBadge(badgeId, 'Errore', 'badge-error'); onEnd(); es.close(); return; }
+      setProgress(Math.min(5 + logLines * 5, 90));
     };
     es.onerror = function() {
       appendLog('Connessione persa al server.', 'log-error');
-      setBadge('Disconnesso', 'badge-error');
-      setRunning(false);
-      document.getElementById('usc-vid-run-btn').disabled = false;
-      es.close();
+      setBadge(badgeId, 'Disconnesso', 'badge-error');
+      onEnd(); es.close();
     };
   }
 </script>
