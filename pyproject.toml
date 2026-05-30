@@ -30,13 +30,12 @@ dependencies = [
     "rembg[cpu]>=2.0.50",
     "pillow>=10.0.0",
     "imageio-ffmpeg>=0.4.9",
-    "realesrgan>=0.3.0",
-    "basicsr>=1.4.2",
 ]
 
 [project.optional-dependencies]
-cuda = ["torch>=2.2.0"]
-cpu  = ["torch>=2.2.0"]
+cuda       = ["torch>=2.2.0"]
+cpu        = ["torch>=2.2.0"]
+realesrgan = ["realesrgan>=0.3.0", "basicsr>=1.4.2"]
 
 [project.scripts]
 rvm-web = "rvm_web.main:main"
