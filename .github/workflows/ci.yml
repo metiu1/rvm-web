@@ -11,4 +11,4 @@ jobs:
       - name: Install (CPU torch)
         run: uv pip install --system "torch>=2.2.0" "torchvision>=0.17.0" -e ".[cpu]"
       - name: Import check
-        run: python -c "import rvm_web; print('OK', rvm_web.__version__)"
+        run: python -c "import rvm_web, rvm_web.main, rvm_web.processing; print('OK', rvm_web.__version__)"

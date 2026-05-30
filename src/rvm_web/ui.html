@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>RVM Web — Video Background Removal</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%233B82F6'/><rect x='3' y='9' width='17' height='14' rx='2' fill='white'/><polygon points='22,11 29,8 29,24 22,21' fill='white'/></svg>">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -105,6 +106,9 @@
     .btn-primary { background: var(--accent); color: #fff; }
     .btn-primary:hover { background: var(--accent-h); }
     .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-danger { background: #dc2626; color: #fff; }
+    .btn-danger:hover { background: #b91c1c; }
+    .btn-danger:disabled { opacity: .5; cursor: not-allowed; }
     .btn-upload {
       background: var(--surface); color: var(--accent);
       border: 1.5px solid var(--accent); white-space: nowrap;
@@ -139,7 +143,7 @@
     .log-error { color: var(--error); }
     .log-done  { color: var(--success); font-weight: 600; }
 
-    #status-badge {
+    #status-badge, .status-badge {
       display: inline-block;
       padding: 2px 10px;
       border-radius: 99px;
@@ -316,11 +320,116 @@
     </div>
   </div>
 
+  <!-- Upscaling Immagini -->
+  <div class="card">
+    <h2>Upscaling immagini</h2>
+    <div class="grid">
+      <div class="field field-full">
+        <label>Immagine di input</label>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <input type="text" id="usc_img_input" placeholder="/percorso/immagine.jpg" style="flex:1;" />
+          <button class="btn btn-upload" type="button" onclick="document.getElementById('usc-img-picker').click()">
+            <svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg>
+            Carica immagine
+          </button>
+          <input type="file" id="usc-img-picker" accept="image/*" style="display:none;" onchange="uploadUpscaleImage(this)" />
+        </div>
+        <span class="hint" id="usc-img-hint" style="display:none;"></span>
+      </div>
+      <div class="field field-full">
+        <label for="usc_img_output">Output</label>
+        <input type="text" id="usc_img_output" placeholder="/percorso/output_4x.png" />
+      </div>
+      <div class="field">
+        <label for="usc_img_scale">Scala</label>
+        <select id="usc_img_scale">
+          <option value="2">2× (raddoppia risoluzione)</option>
+          <option value="4">4× (quadruplica risoluzione)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="usc_img_method">Metodo</label>
+        <select id="usc_img_method">
+          <option value="lanczos">Lanczos (classico, veloce)</option>
+          <option value="realesrgan">Real-ESRGAN (AI, richiede pip install realesrgan)</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; gap:12px; margin-top:1rem;">
+      <button class="btn btn-primary" id="usc-img-run-btn" type="button" onclick="runUpscaleImage()">
+        <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+        Upscala immagine
+      </button>
+      <span id="usc-img-badge" style="display:none;" class="status-badge"></span>
+    </div>
+    <div id="usc-img-preview" style="display:none; margin-top:1rem;">
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+        <div>
+          <p style="font-size:.75rem; color:var(--muted); margin-bottom:.4rem; text-transform:uppercase; letter-spacing:.06em;">Originale</p>
+          <img id="usc-img-before" style="width:100%; border-radius:6px; border:1px solid var(--border); image-rendering:pixelated;" />
+        </div>
+        <div>
+          <p style="font-size:.75rem; color:var(--muted); margin-bottom:.4rem; text-transform:uppercase; letter-spacing:.06em;">Upscalato</p>
+          <img id="usc-img-after" style="width:100%; border-radius:6px; border:1px solid var(--border);" />
+        </div>
+      </div>
+      <p style="font-size:.75rem; color:var(--muted); margin-top:.5rem;" id="usc-img-save-hint"></p>
+    </div>
+  </div>
+
+  <!-- Upscaling Video -->
+  <div class="card">
+    <h2>Upscaling video</h2>
+    <div class="grid">
+      <div class="field field-full">
+        <label>Video di input</label>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <input type="text" id="usc_vid_input" placeholder="C:\Videos\input.mp4" style="flex:1;" />
+          <button class="btn btn-upload" type="button" onclick="document.getElementById('usc-vid-picker').click()">
+            <svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg>
+            Carica video
+          </button>
+          <input type="file" id="usc-vid-picker" accept="video/*" style="display:none;" onchange="uploadUpscaleVideo(this)" />
+        </div>
+        <span class="hint" id="usc-vid-hint" style="display:none;"></span>
+      </div>
+      <div class="field field-full">
+        <label for="usc_vid_output">Output</label>
+        <input type="text" id="usc_vid_output" placeholder="C:\Videos\output_upscaled.mp4" />
+      </div>
+      <div class="field">
+        <label for="usc_vid_scale">Scala</label>
+        <select id="usc_vid_scale">
+          <option value="2">2× (raddoppia risoluzione)</option>
+          <option value="4">4× (quadruplica risoluzione)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="usc_vid_method">Metodo</label>
+        <select id="usc_vid_method">
+          <option value="lanczos">Lanczos (classico, veloce)</option>
+          <option value="realesrgan">Real-ESRGAN (AI, richiede pip install realesrgan)</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; gap:12px; margin-top:1rem;">
+      <button class="btn btn-primary" id="usc-vid-run-btn" type="button" onclick="runUpscaleVideo()">
+        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        Upscala video
+      </button>
+      <span class="hint">Il progresso appare nel pannello sottostante</span>
+    </div>
+  </div>
+
   <!-- Action -->
   <div style="display:flex; align-items:center; gap:12px; margin-bottom:1.25rem;">
     <button class="btn btn-primary" id="run-btn" onclick="runProcess()">
       <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
       Process Video
+    </button>
+    <button class="btn btn-danger" id="cancel-btn" onclick="cancelProcess()" style="display:none;">
+      <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      Cancel
     </button>
     <span id="status-badge" style="display:none;"></span>
   </div>
@@ -337,6 +446,18 @@
 <script>
   let es = null;
   let logLines = 0;
+
+  async function cancelProcess() {
+    const btn = document.getElementById('cancel-btn');
+    btn.disabled = true;
+    await fetch('/api/cancel', { method: 'POST' });
+    btn.disabled = false;
+  }
+
+  function setRunning(running) {
+    document.getElementById('run-btn').disabled = running;
+    document.getElementById('cancel-btn').style.display = running ? 'inline-flex' : 'none';
+  }
 
   async function uploadFile(input) {
     const file = input.files[0];
@@ -479,7 +600,7 @@
       return;
     }
 
-    btn.disabled = true;
+    setRunning(true);
     document.getElementById('progress-card').style.display = 'block';
     document.getElementById('log').innerHTML = '';
     logLines = 0;
@@ -509,7 +630,7 @@
     if (!data.ok) {
       appendLog('Error: ' + data.error, 'log-error');
       setBadge('Error', 'badge-error');
-      btn.disabled = false;
+      setRunning(false);
       return;
     }
 
@@ -522,15 +643,216 @@
         setProgress(100);
         setBadge('Done', 'badge-done');
         appendLog('Finished.', 'log-done');
-        btn.disabled = false;
+        setRunning(false);
+        es.close();
+        return;
+      }
+      if (msg === '__cancelled__') {
+        setProgress(0);
+        setBadge('Cancelled', 'badge-error');
+        appendLog('Cancelled.', 'log-error');
+        setRunning(false);
         es.close();
         return;
       }
       const isErr = msg.startsWith('ERROR:');
       appendLog(msg, isErr ? 'log-error' : '');
-      if (isErr) { setBadge('Error', 'badge-error'); btn.disabled = false; es.close(); return; }
+      if (isErr) { setBadge('Error', 'badge-error'); setRunning(false); es.close(); return; }
       const pct = Math.min(5 + logLines * 15, 90);
       setProgress(pct);
+    };
+    es.onerror = function() {
+      // Connection lost: stop spinner so UI is not stuck. Job may still finish server-side.
+      appendLog('Connessione persa al server.', 'log-error');
+      setBadge('Disconnesso', 'badge-error');
+      setRunning(false);
+      es.close();
+    };
+  }
+
+  async function uploadUpscaleImage(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const hint = document.getElementById('usc-img-hint');
+    hint.style.display = 'block';
+    hint.style.color = 'var(--muted)';
+    hint.textContent = `Caricamento "${file.name}"…`;
+
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+      const res = await fetch('/api/upload-image', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (data.ok) {
+        document.getElementById('usc_img_input').value = data.path;
+        const scale = document.getElementById('usc_img_scale').value;
+        const ext = data.output_path.split('.').pop();
+        const base = data.path.replace(/\.[^.]+$/, '');
+        if (!document.getElementById('usc_img_output').value.trim())
+          document.getElementById('usc_img_output').value = base + '_upscaled.' + ext;
+        document.getElementById('usc-img-before').src = URL.createObjectURL(file);
+        document.getElementById('usc-img-preview').style.display = 'block';
+        document.getElementById('usc-img-after').src = '';
+        hint.style.color = 'var(--success)';
+        hint.textContent = `✓ "${file.name}" pronto`;
+      } else {
+        hint.style.color = 'var(--error)';
+        hint.textContent = 'Errore durante il caricamento.';
+      }
+    } catch (e) {
+      hint.style.color = 'var(--error)';
+      hint.textContent = 'Errore di rete.';
+    }
+    input.value = '';
+  }
+
+  async function runUpscaleImage() {
+    const inputPath = document.getElementById('usc_img_input').value.trim();
+    const outputPath = document.getElementById('usc_img_output').value.trim();
+    if (!inputPath) { alert('Seleziona un\'immagine prima.'); return; }
+    if (!outputPath) { alert('Specifica un percorso di output.'); return; }
+
+    const btn = document.getElementById('usc-img-run-btn');
+    const badge = document.getElementById('usc-img-badge');
+    btn.disabled = true;
+    badge.style.display = 'inline-block';
+    badge.className = 'status-badge badge-running';
+    badge.textContent = 'Elaborazione…';
+
+    try {
+      const res = await fetch('/api/upscale-image', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          input_path: inputPath,
+          output_path: outputPath,
+          method: document.getElementById('usc_img_method').value,
+          scale: parseInt(document.getElementById('usc_img_scale').value),
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        badge.className = 'status-badge badge-done';
+        badge.textContent = 'Fatto ✓';
+        document.getElementById('usc-img-preview').style.display = 'block';
+        document.getElementById('usc-img-after').src = '/api/preview-image?path=' + encodeURIComponent(data.output_path) + '&t=' + Date.now();
+        document.getElementById('usc-img-save-hint').textContent = '✓ Salvato in: ' + data.output_path;
+      } else {
+        badge.className = 'status-badge badge-error';
+        badge.textContent = 'Errore';
+        alert('Errore: ' + data.error);
+      }
+    } catch (e) {
+      badge.className = 'status-badge badge-error';
+      badge.textContent = 'Errore';
+    }
+    btn.disabled = false;
+  }
+
+  async function uploadUpscaleVideo(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const hint = document.getElementById('usc-vid-hint');
+    hint.style.display = 'block';
+    hint.style.color = 'var(--muted)';
+    hint.textContent = `Caricamento "${file.name}"…`;
+
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+      const res = await fetch('/api/upload-upscale', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (data.ok) {
+        document.getElementById('usc_vid_input').value = data.path;
+        if (!document.getElementById('usc_vid_output').value.trim())
+          document.getElementById('usc_vid_output').value = data.output_path;
+        hint.style.color = 'var(--success)';
+        hint.textContent = `✓ "${file.name}" pronto`;
+      } else {
+        hint.style.color = 'var(--error)';
+        hint.textContent = 'Errore durante il caricamento.';
+      }
+    } catch (e) {
+      hint.style.color = 'var(--error)';
+      hint.textContent = 'Errore di rete.';
+    }
+    input.value = '';
+  }
+
+  async function runUpscaleVideo() {
+    const inputPath = document.getElementById('usc_vid_input').value.trim();
+    const outputPath = document.getElementById('usc_vid_output').value.trim();
+    if (!inputPath) { alert('Seleziona un video prima.'); return; }
+    if (!outputPath) { alert('Specifica un percorso di output.'); return; }
+
+    setRunning(true);
+    document.getElementById('usc-vid-run-btn').disabled = true;
+    document.getElementById('progress-card').style.display = 'block';
+    document.getElementById('log').innerHTML = '';
+    logLines = 0;
+    setProgress(5);
+    setBadge('Upscaling…', 'badge-running');
+
+    const res = await fetch('/api/upscale-video', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        input_path: inputPath,
+        output_path: outputPath,
+        method: document.getElementById('usc_vid_method').value,
+        scale: parseInt(document.getElementById('usc_vid_scale').value),
+      }),
+    });
+    const data = await res.json();
+    if (!data.ok) {
+      appendLog('Errore: ' + data.error, 'log-error');
+      setBadge('Errore', 'badge-error');
+      setRunning(false);
+      document.getElementById('usc-vid-run-btn').disabled = false;
+      return;
+    }
+
+    if (es) es.close();
+    es = new EventSource('/api/events');
+    es.onmessage = function(e) {
+      const d = JSON.parse(e.data);
+      const msg = d.msg;
+      if (msg === '__done__') {
+        setProgress(100);
+        setBadge('Done', 'badge-done');
+        appendLog('Upscaling completato.', 'log-done');
+        setRunning(false);
+        document.getElementById('usc-vid-run-btn').disabled = false;
+        es.close();
+        return;
+      }
+      if (msg === '__cancelled__') {
+        setProgress(0);
+        setBadge('Annullato', 'badge-error');
+        appendLog('Annullato.', 'log-error');
+        setRunning(false);
+        document.getElementById('usc-vid-run-btn').disabled = false;
+        es.close();
+        return;
+      }
+      const isErr = msg.startsWith('ERROR:');
+      appendLog(msg, isErr ? 'log-error' : '');
+      if (isErr) {
+        setBadge('Errore', 'badge-error');
+        setRunning(false);
+        document.getElementById('usc-vid-run-btn').disabled = false;
+        es.close();
+        return;
+      }
+      const pct = Math.min(5 + logLines * 3, 90);
+      setProgress(pct);
+    };
+    es.onerror = function() {
+      appendLog('Connessione persa al server.', 'log-error');
+      setBadge('Disconnesso', 'badge-error');
+      setRunning(false);
+      document.getElementById('usc-vid-run-btn').disabled = false;
+      es.close();
     };
   }
 </script>

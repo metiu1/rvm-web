@@ -31,8 +31,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-cuda = ["torch>=2.2.0"]
-cpu  = ["torch>=2.2.0"]
+cuda       = ["torch>=2.2.0"]
+cpu        = ["torch>=2.2.0"]
+realesrgan = ["realesrgan>=0.3.0", "basicsr>=1.4.2"]
 
 [project.scripts]
 rvm-web = "rvm_web.main:main"

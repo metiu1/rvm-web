@@ -3,22 +3,23 @@ from __future__ import annotations
 
 import asyncio
 import json
-import queue
-import tempfile
+import multiprocessing as mp
 import threading
 import webbrowser
 from pathlib import Path
+from typing import Optional
 
 import uvicorn
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse
 from pydantic import BaseModel
 
-from .processing import process_video
+from .processing import process_video, upscale_image, upscale_video
 
 app = FastAPI(title="rvm-web")
 
-_job_queue: queue.Queue[str] = queue.Queue()
+_mp_queue: Optional[mp.Queue] = None
+_current_proc: Optional[mp.Process] = None
 _job_running = threading.Event()
 
 
@@ -41,6 +42,47 @@ class ImageRequest(BaseModel):
     output_path: str
 
 
+class UpscaleImageRequest(BaseModel):
+    input_path: str
+    output_path: str
+    method: str = "lanczos"
+    scale: int = 2
+
+
+class UpscaleVideoRequest(BaseModel):
+    input_path: str
+    output_path: str
+    method: str = "lanczos"
+    scale: int = 2
+
+
+def _worker(params: dict, q: "mp.Queue[str]") -> None:
+    from rvm_web.processing import process_video
+    try:
+        process_video(params, progress_cb=lambda msg: q.put(msg))
+    except Exception as exc:
+        q.put(f"ERROR: {exc}")
+    finally:
+        q.put("__done__")
+
+
+def _upscale_video_worker(params: dict, q: "mp.Queue[str]") -> None:
+    from rvm_web.processing import upscale_video
+    try:
+        upscale_video(params, progress_cb=lambda msg: q.put(msg))
+    except Exception as exc:
+        q.put(f"ERROR: {exc}")
+    finally:
+        q.put("__done__")
+
+
+def _monitor_proc(proc: mp.Process) -> None:
+    def _run() -> None:
+        proc.join()
+        _job_running.clear()
+    threading.Thread(target=_run, daemon=True).start()
+
+
 @app.get("/", response_class=HTMLResponse)
 async def serve_ui() -> HTMLResponse:
     html = (Path(__file__).parent / "ui.html").read_text(encoding="utf-8")
@@ -53,12 +95,10 @@ async def api_upload(file: UploadFile = File(...)) -> dict:
     stem = Path(original_name).stem
     suffix = Path(original_name).suffix or ".mp4"
 
-    # Save to ~/Downloads/rvm-uploads/ — works on Windows & macOS
     upload_dir = Path.home() / "Downloads" / "rvm-uploads"
     upload_dir.mkdir(parents=True, exist_ok=True)
 
     dest = upload_dir / original_name
-    # Avoid overwriting: append counter if exists
     counter = 1
     while dest.exists():
         dest = upload_dir / f"{stem}_{counter}{suffix}"
@@ -73,35 +113,52 @@ async def api_upload(file: UploadFile = File(...)) -> dict:
 
 @app.post("/api/process")
 async def api_process(req: ProcessRequest) -> dict:
+    global _current_proc, _mp_queue
     if _job_running.is_set():
         return {"ok": False, "error": "A job is already running."}
 
     params = req.model_dump()
     params["downsample_ratio"] = None if params["downsample_ratio"] == "none" else float(params["downsample_ratio"])
 
-    def run() -> None:
-        _job_running.set()
-        try:
-            process_video(params, progress_cb=lambda msg: _job_queue.put(msg))
-        except Exception as exc:
-            _job_queue.put(f"ERROR: {exc}")
-        finally:
-            _job_running.clear()
-            _job_queue.put("__done__")
+    _mp_queue = mp.Queue()
+    _job_running.set()
+    proc = mp.Process(target=_worker, args=(params, _mp_queue), daemon=True)
+    proc.start()
+    _current_proc = proc
+    _monitor_proc(proc)
+    return {"ok": True}
 
-    threading.Thread(target=run, daemon=True).start()
+
+@app.post("/api/cancel")
+async def api_cancel() -> dict:
+    global _current_proc
+    if not _job_running.is_set():
+        return {"ok": False, "error": "No job running."}
+    proc = _current_proc
+    if proc and proc.is_alive():
+        proc.terminate()
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, lambda: proc.join(timeout=5))
+    _job_running.clear()
+    if _mp_queue is not None:
+        _mp_queue.put("__cancelled__")
     return {"ok": True}
 
 
 @app.get("/api/events")
 async def api_events() -> StreamingResponse:
+    q = _mp_queue
+
     async def generator():
-        loop = asyncio.get_event_loop()
+        if q is None:
+            yield f"data: {json.dumps({'msg': '__done__'})}\n\n"
+            return
+        loop = asyncio.get_running_loop()
         while True:
             try:
-                msg = await loop.run_in_executor(None, lambda: _job_queue.get(timeout=0.3))
+                msg = await loop.run_in_executor(None, lambda: q.get(timeout=0.3))
                 yield f"data: {json.dumps({'msg': msg})}\n\n"
-                if msg == "__done__":
+                if msg in ("__done__", "__cancelled__"):
                     break
             except Exception:
                 yield ": keep-alive\n\n"
@@ -137,35 +194,113 @@ async def api_upload_image(file: UploadFile = File(...)) -> dict:
     return {"ok": True, "path": str(dest), "output_path": output_path}
 
 
-@app.post("/api/process-image")
-async def api_process_image(req: ImageRequest) -> dict:
+def _remove_bg(input_path: Path, output_path: Path) -> None:
     from rembg import remove
 
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    result = remove(input_path.read_bytes())
+    output_path.write_bytes(result)
+
+
+@app.post("/api/process-image")
+async def api_process_image(req: ImageRequest) -> dict:
     input_path = Path(req.input_path)
     output_path = Path(req.output_path)
 
     if not input_path.exists():
         return {"ok": False, "error": f"File non trovato: {input_path}"}
 
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-
-    with open(input_path, "rb") as f:
-        result = remove(f.read())
-
-    output_path.write_bytes(result)
+    try:
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, _remove_bg, input_path, output_path)
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)}
     return {"ok": True, "output_path": str(output_path)}
 
 
 @app.get("/api/preview-image")
 async def api_preview_image(path: str) -> FileResponse:
+    from fastapi import HTTPException
+
     p = Path(path)
-    if not p.exists():
-        from fastapi import HTTPException
+    if not p.exists() or not p.is_file():
         raise HTTPException(404, "File not found")
-    return FileResponse(str(p), media_type="image/png")
+    suffix = p.suffix.lower()
+    media = {
+        ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+        ".webp": "image/webp", ".gif": "image/gif",
+    }.get(suffix, "application/octet-stream")
+    return FileResponse(str(p), media_type=media)
+
+
+@app.post("/api/upload-upscale")
+async def api_upload_upscale(file: UploadFile = File(...)) -> dict:
+    original_name = Path(file.filename).name if file.filename else "input.mp4"
+    stem = Path(original_name).stem
+    suffix = Path(original_name).suffix or ".mp4"
+
+    upload_dir = Path.home() / "Downloads" / "rvm-uploads"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+
+    dest = upload_dir / original_name
+    counter = 1
+    while dest.exists():
+        dest = upload_dir / f"{stem}_{counter}{suffix}"
+        counter += 1
+
+    content = await file.read()
+    dest.write_bytes(content)
+
+    output_path = str(upload_dir / f"{dest.stem}_upscaled{suffix}")
+    return {"ok": True, "path": str(dest), "output_path": output_path}
+
+
+@app.post("/api/upscale-image")
+async def api_upscale_image(req: UpscaleImageRequest) -> dict:
+    input_path = Path(req.input_path)
+    output_path = Path(req.output_path)
+
+    if not input_path.exists():
+        return {"ok": False, "error": f"File non trovato: {input_path}"}
+    if req.scale not in (2, 4):
+        return {"ok": False, "error": "Scale deve essere 2 o 4"}
+
+    try:
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(
+            None,
+            lambda: upscale_image(input_path, output_path, req.method, req.scale),
+        )
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)}
+    return {"ok": True, "output_path": str(output_path)}
+
+
+@app.post("/api/upscale-video")
+async def api_upscale_video(req: UpscaleVideoRequest) -> dict:
+    global _current_proc, _mp_queue
+    if _job_running.is_set():
+        return {"ok": False, "error": "Un job è già in esecuzione."}
+
+    params = {
+        "input_path": req.input_path,
+        "output_path": req.output_path,
+        "method": req.method,
+        "scale": req.scale,
+    }
+
+    _mp_queue = mp.Queue()
+    _job_running.set()
+    proc = mp.Process(target=_upscale_video_worker, args=(params, _mp_queue), daemon=True)
+    proc.start()
+    _current_proc = proc
+    _monitor_proc(proc)
+    return {"ok": True}
 
 
 def main() -> None:
+    mp.freeze_support()
+
     def open_browser() -> None:
         import time
         time.sleep(1.2)
