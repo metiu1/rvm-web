@@ -178,7 +178,53 @@ def upscale_image(
         out.save(str(output_path))
 
 
+def _find_ffmpeg() -> Optional[str]:
+    """Locate an ffmpeg executable: system PATH first, then imageio-ffmpeg bundle."""
+    import shutil
+
+    exe = shutil.which("ffmpeg")
+    if exe:
+        return exe
+    try:
+        from imageio_ffmpeg import get_ffmpeg_exe  # type: ignore
+        return get_ffmpeg_exe()
+    except Exception:
+        return None
+
+
+def _mux_audio(video_path: str, audio_src: str, output_path: str,
+               log: Callable[[str], None]) -> bool:
+    """Mux audio from audio_src onto video_path → output_path. Returns True on success."""
+    ffmpeg = _find_ffmpeg()
+    if not ffmpeg:
+        log("WARN: ffmpeg non trovato (pip install imageio-ffmpeg) — output senza audio")
+        return False
+
+    import subprocess
+
+    cmd = [
+        ffmpeg, "-y",
+        "-i", video_path,        # 0: upscaled video (no audio)
+        "-i", audio_src,         # 1: original (for audio)
+        "-map", "0:v:0",
+        "-map", "1:a:0?",        # optional audio — won't fail if source has none
+        "-c:v", "copy",
+        "-c:a", "aac",
+        "-shortest",
+        output_path,
+    ]
+    try:
+        subprocess.run(cmd, check=True,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        log("Audio unito al video.")
+        return True
+    except Exception as exc:
+        log(f"WARN: unione audio fallita ({exc}) — output senza audio")
+        return False
+
+
 def upscale_video(params: dict, progress_cb: Optional[Callable[[str], None]] = None) -> None:
+    import os
     import av  # type: ignore
     from PIL import Image  # type: ignore
 
@@ -209,60 +255,54 @@ def upscale_video(params: dict, progress_cb: Optional[Callable[[str], None]] = N
         w, h = pil_frame.size
         return pil_frame.resize((w * scale, h * scale), Image.LANCZOS)
 
+    out_dir = Path(output_path).parent
+    out_dir.mkdir(parents=True, exist_ok=True)
+    # Upscale into a video-only temp file, then mux original audio back with ffmpeg.
+    # This avoids the brittle, version-dependent PyAV audio stream-copy API.
+    temp_video = str(out_dir / f"{Path(output_path).stem}__videotmp.mp4")
+
+    has_audio = False
     with av.open(input_path) as in_c:
         in_v = in_c.streams.video[0]
         fps = in_v.average_rate
         total = in_v.frames or 0
         orig_w, orig_h = in_v.width, in_v.height
+        has_audio = len(in_c.streams.audio) > 0
         log(f"Risoluzione: {orig_w}x{orig_h} → {orig_w * scale}x{orig_h * scale}, {float(fps):.2f} fps")
 
-        audio_in = list(in_c.streams.audio)
-
-        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-        with av.open(output_path, "w") as out_c:
+        with av.open(temp_video, "w") as out_c:
             out_v = out_c.add_stream("libx264", rate=fps)
             out_v.width = orig_w * scale
             out_v.height = orig_h * scale
             out_v.pix_fmt = "yuv420p"
 
-            # Copy each audio stream verbatim (no re-encode)
-            audio_map: dict[int, "av.stream.Stream"] = {}
-            for a in audio_in:
-                out_a = out_c.add_stream(a.codec_context.name)
-                icc = a.codec_context
-                occ = out_a.codec_context
-                occ.sample_rate = icc.sample_rate
-                occ.channels = icc.channels
-                occ.time_base = icc.time_base
-                audio_map[a.index] = out_a
-
             frame_idx = 0
-            streams = [in_v] + audio_in
-            for packet in in_c.demux(*streams):
-                if packet.dts is None:
-                    # Flush packet — drain video encoder
-                    if packet.stream is in_v:
-                        for pkt in out_v.encode():
-                            out_c.mux(pkt)
-                    continue
+            for frame in in_c.decode(video=0):
+                upscaled = process_frame(frame.to_image())
+                out_frame = av.VideoFrame.from_image(upscaled)
+                out_frame.pts = frame.pts
+                out_frame.time_base = frame.time_base
+                for pkt in out_v.encode(out_frame):
+                    out_c.mux(pkt)
+                frame_idx += 1
+                if frame_idx == 1 or frame_idx % 25 == 0:
+                    progress = f"{frame_idx}/{total}" if total else str(frame_idx)
+                    log(f"Frame {progress} elaborati…")
 
-                if packet.stream.type == "video":
-                    for frame in packet.decode():
-                        upscaled = process_frame(frame.to_image())
-                        out_frame = av.VideoFrame.from_image(upscaled)
-                        out_frame.pts = frame.pts
-                        out_frame.time_base = frame.time_base
-                        for pkt in out_v.encode(out_frame):
-                            out_c.mux(pkt)
-                        frame_idx += 1
-                        if frame_idx == 1 or frame_idx % 25 == 0:
-                            progress = f"{frame_idx}/{total}" if total else str(frame_idx)
-                            log(f"Frame {progress} elaborati…")
+            for pkt in out_v.encode():
+                out_c.mux(pkt)
 
-                elif packet.stream.type == "audio":
-                    out_a = audio_map.get(packet.stream.index)
-                    if out_a is not None:
-                        packet.stream = out_a
-                        out_c.mux(packet)
+    # Attach audio
+    if has_audio:
+        log("Unione audio…")
+        if _mux_audio(temp_video, input_path, output_path, log):
+            try:
+                os.remove(temp_video)
+            except OSError:
+                pass
+        else:
+            os.replace(temp_video, output_path)
+    else:
+        os.replace(temp_video, output_path)
 
     log("Done.")
