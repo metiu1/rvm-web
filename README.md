@@ -42,20 +42,37 @@ A browser window opens automatically at `http://localhost:7860`.
 
 ### CUDA (NVIDIA GPU) — recommended
 
-```bash
-uv tool install git+https://github.com/metiu1/rvm-web --extra cuda
-```
-
-### Real-ESRGAN (AI upscaling) — optional
-
-Lanczos upscaling works out of the box. For AI upscaling, add the extra:
+On Windows, PyPI serves **CPU-only** torch by default. To get GPU
+acceleration, tell uv to auto-detect your CUDA driver and pull matching
+wheels:
 
 ```bash
-uv tool install git+https://github.com/metiu1/rvm-web --extra cpu --extra realesrgan
+uv tool install --reinstall --torch-backend=auto git+https://github.com/metiu1/rvm-web
 ```
 
+Or set it once for every future install (persists across terminals):
+
+```powershell
+# PowerShell (Windows) — set once
+[Environment]::SetEnvironmentVariable('UV_TORCH_BACKEND','auto','User')
+```
+
+```bash
+# bash/zsh (Linux/macOS) — add to your shell profile
+export UV_TORCH_BACKEND=auto
+```
+
+Verify CUDA is active — the upscaling log shows `Modello caricato su cuda:0`,
+or check directly:
+
+```bash
+uv tool run --from rvm-web python -c "import torch; print(torch.cuda.is_available())"
+```
+
+> **Real-ESRGAN** AI upscaling is **built-in** — no extra packages needed.
+> Model weights download automatically on first use to `~/.cache/rvm_web/`.
 > `imageio-ffmpeg` (bundled ffmpeg, used to keep audio when upscaling video)
-> is a core dependency and is installed automatically — no separate step needed.
+> is also installed automatically.
 
 ---
 
@@ -86,8 +103,8 @@ Output is a PNG with full alpha transparency.
 Both image and video upscaling support 2× and 4× with two methods:
 
 - **Lanczos** — classic high-quality resampling, no extra dependencies, fast.
-- **Real-ESRGAN** — AI super-resolution (requires the `realesrgan` extra). Model
-  weights download automatically on first use.
+- **Real-ESRGAN** — AI super-resolution, built-in (no extra packages). Model
+  weights download automatically on first use to `~/.cache/rvm_web/`.
 
 For **video** upscaling the original audio track is preserved: the video is
 upscaled frame-by-frame, then the audio is muxed back with ffmpeg
