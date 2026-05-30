@@ -245,7 +245,13 @@ def upscale_video(params: dict, progress_cb: Optional[Callable[[str], None]] = N
             upsampler = _build_realesrgan(scale)
             log("Modello caricato.")
         except ImportError:
-            log("WARN: realesrgan non trovato — uso Lanczos classico")
+            # Don't silently fall back to Lanczos — that produces a merely
+            # enlarged (not enhanced) video and looks like a bug to the user.
+            raise RuntimeError(
+                "Real-ESRGAN non installato: con Lanczos il video viene solo "
+                "ingrandito, non migliorato. Installa con  pip install realesrgan basicsr  "
+                "(consigliata una GPU NVIDIA: su CPU è molto lento)."
+            )
 
     def process_frame(pil_frame: "Image.Image") -> "Image.Image":
         if upsampler is not None:
