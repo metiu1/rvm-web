@@ -146,7 +146,7 @@
     label { font-size: .82rem; font-weight: 500; }
     .hint { font-size: .73rem; color: var(--muted); }
 
-    input[type="text"], select {
+    input[type="text"], input[type="number"], select {
       width: 100%;
       padding: .46rem .7rem;
       border: 1px solid var(--border);
@@ -159,6 +159,14 @@
       -webkit-appearance: none;
       transition: border-color .15s;
     }
+    input[type="number"] { -moz-appearance: textfield; }
+    input[type="range"] { width: 100%; accent-color: var(--accent); }
+    .slider-val { font-size: .73rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .check-row { display: flex; gap: 1.2rem; align-items: center; }
+    .check-row label { display: flex; align-items: center; gap: 6px; font-weight: 500; cursor: pointer; }
+    input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+    .op-fields { display: none; }
+    .op-fields.active { display: contents; }
     select {
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748b' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
       background-repeat: no-repeat;
@@ -298,8 +306,8 @@
       <svg viewBox="0 0 24 24"><path d="M18 3a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3h12zm-5 4H9v10h4a5 5 0 0 0 0-10zm0 2a3 3 0 0 1 0 6H11V9h2z"/></svg>
     </div>
     <div class="sb-logo-text">
-      <h1>RVM Web</h1>
-      <p>AI Media Tools</p>
+      <h1>RVM</h1>
+      <p>Studio media locale</p>
     </div>
   </div>
 
@@ -325,6 +333,18 @@
   <button class="nav-item" onclick="showPage('page-vidup', this)">
     <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
     Upscaling video
+  </button>
+
+  <div class="sb-section-label">Editing</div>
+
+  <button class="nav-item" onclick="showPage('page-imgedit', this)">
+    <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+    Editing immagine
+  </button>
+
+  <button class="nav-item" onclick="showPage('page-videdit', this)">
+    <svg viewBox="0 0 24 24"><path d="M17 10.5V7a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+    Editing video
   </button>
 </nav>
 
@@ -622,6 +642,269 @@
             Annulla
           </button>
           <span id="usc-vid-badge" style="display:none;" class="status-badge"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Page: Editing Immagine ── -->
+    <div class="page" id="page-imgedit">
+      <p class="page-title">Editing immagine</p>
+
+      <div class="card">
+        <p class="card-title">File</p>
+        <div class="grid">
+          <div class="field field-full">
+            <label>Immagine di input</label>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="text" id="ie_input" placeholder="/percorso/immagine.jpg" style="flex:1;" />
+              <button class="btn btn-upload" onclick="document.getElementById('ie-picker').click()">
+                <svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg>
+                Carica
+              </button>
+              <input type="file" id="ie-picker" accept="image/*" style="display:none;" onchange="uploadEditImage(this)" />
+            </div>
+            <span class="hint" id="ie-hint" style="display:none;"></span>
+          </div>
+          <div class="field field-full">
+            <label>Output</label>
+            <input type="text" id="ie_output" placeholder="/percorso/output_edit.png" />
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <p class="card-title">Geometria</p>
+        <div class="grid">
+          <div class="field">
+            <label>Rotazione</label>
+            <select id="ie_rotate">
+              <option value="0">Nessuna</option>
+              <option value="90">90° antiorario</option>
+              <option value="180">180°</option>
+              <option value="270">90° orario</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Specchia</label>
+            <div class="check-row" style="padding-top:.35rem;">
+              <label><input type="checkbox" id="ie_flip_h" /> Orizzontale</label>
+              <label><input type="checkbox" id="ie_flip_v" /> Verticale</label>
+            </div>
+          </div>
+          <div class="field">
+            <label>Ridimensiona larghezza (px)</label>
+            <input type="number" id="ie_resize_w" placeholder="0 = auto" min="0" />
+            <span class="hint">0 in entrambi = nessun resize. Uno solo = mantiene proporzioni.</span>
+          </div>
+          <div class="field">
+            <label>Ridimensiona altezza (px)</label>
+            <input type="number" id="ie_resize_h" placeholder="0 = auto" min="0" />
+          </div>
+          <div class="field field-full">
+            <label>Ritaglio (crop) — x, y, larghezza, altezza in px (vuoto = nessuno)</label>
+            <div style="display:flex;gap:8px;">
+              <input type="number" id="ie_crop_x" placeholder="x" min="0" />
+              <input type="number" id="ie_crop_y" placeholder="y" min="0" />
+              <input type="number" id="ie_crop_w" placeholder="larg" min="0" />
+              <input type="number" id="ie_crop_h" placeholder="alt" min="0" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <p class="card-title">Colore e filtri</p>
+        <div class="grid">
+          <div class="field">
+            <label>Luminosità <span class="slider-val" id="ie_brightness_v">1.00</span></label>
+            <input type="range" id="ie_brightness" min="0" max="2" step="0.05" value="1"
+                   oninput="document.getElementById('ie_brightness_v').textContent=(+this.value).toFixed(2)" />
+          </div>
+          <div class="field">
+            <label>Contrasto <span class="slider-val" id="ie_contrast_v">1.00</span></label>
+            <input type="range" id="ie_contrast" min="0" max="2" step="0.05" value="1"
+                   oninput="document.getElementById('ie_contrast_v').textContent=(+this.value).toFixed(2)" />
+          </div>
+          <div class="field">
+            <label>Saturazione <span class="slider-val" id="ie_saturation_v">1.00</span></label>
+            <input type="range" id="ie_saturation" min="0" max="2" step="0.05" value="1"
+                   oninput="document.getElementById('ie_saturation_v').textContent=(+this.value).toFixed(2)" />
+          </div>
+          <div class="field">
+            <label>Nitidezza <span class="slider-val" id="ie_sharpness_v">1.00</span></label>
+            <input type="range" id="ie_sharpness" min="0" max="3" step="0.05" value="1"
+                   oninput="document.getElementById('ie_sharpness_v').textContent=(+this.value).toFixed(2)" />
+          </div>
+          <div class="field">
+            <label>Filtro</label>
+            <select id="ie_filter">
+              <option value="none">Nessuno</option>
+              <option value="auto">Auto-migliora</option>
+              <option value="grayscale">Bianco e nero</option>
+              <option value="sepia">Seppia</option>
+              <option value="invert">Inverti colori</option>
+              <option value="blur">Sfocatura</option>
+              <option value="sharpen">Nitidezza</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Formato output</label>
+            <select id="ie_fmt">
+              <option value="">Come input</option>
+              <option value="png">PNG (trasparenza)</option>
+              <option value="jpg">JPG</option>
+              <option value="webp">WEBP</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Qualità (JPG/WEBP) <span class="slider-val" id="ie_quality_v">92</span></label>
+            <input type="range" id="ie_quality" min="1" max="100" step="1" value="92"
+                   oninput="document.getElementById('ie_quality_v').textContent=this.value" />
+          </div>
+        </div>
+        <div class="action-row">
+          <button class="btn btn-primary" id="ie-run-btn" onclick="runEditImage()">
+            <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+            Applica
+          </button>
+          <span id="ie-badge" style="display:none;" class="status-badge"></span>
+        </div>
+      </div>
+
+      <div id="ie-preview" style="display:none;">
+        <div class="preview-grid">
+          <div>
+            <p class="preview-label">Originale</p>
+            <img id="ie-before" class="preview-img" />
+          </div>
+          <div class="preview-checker">
+            <img id="ie-after" class="preview-img" style="border:none;" />
+          </div>
+        </div>
+        <p class="save-hint" id="ie-save-hint"></p>
+      </div>
+    </div>
+
+    <!-- ── Page: Editing Video ── -->
+    <div class="page" id="page-videdit">
+      <p class="page-title">Editing video</p>
+
+      <div class="card">
+        <p class="card-title">File</p>
+        <div class="grid">
+          <div class="field field-full">
+            <label>Video di input</label>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="text" id="ve_input" placeholder="C:\Videos\input.mp4" style="flex:1;" />
+              <button class="btn btn-upload" onclick="document.getElementById('ve-picker').click()">
+                <svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg>
+                Carica
+              </button>
+              <input type="file" id="ve-picker" accept="video/*" style="display:none;" onchange="uploadEditVideo(this)" />
+            </div>
+            <span class="hint" id="ve-hint" style="display:none;"></span>
+          </div>
+          <div class="field field-full">
+            <label>Output</label>
+            <input type="text" id="ve_output" placeholder="C:\Videos\output_edit.mp4" />
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <p class="card-title">Operazione</p>
+        <div class="grid">
+          <div class="field field-full">
+            <label>Cosa fare</label>
+            <select id="ve_operation" onchange="updateVideoOp()">
+              <option value="trim">Taglia (trim) — inizio/fine</option>
+              <option value="crop">Ritaglia area (crop)</option>
+              <option value="resize">Ridimensiona</option>
+              <option value="speed">Cambia velocità</option>
+              <option value="compress">Comprimi</option>
+              <option value="convert">Converti formato</option>
+              <option value="gif">Esporta GIF</option>
+              <option value="extract_audio">Estrai audio</option>
+              <option value="mute">Rimuovi audio</option>
+              <option value="reverse">Inverti (reverse)</option>
+            </select>
+          </div>
+
+          <!-- trim -->
+          <div class="op-fields" data-op="trim">
+            <div class="field"><label>Inizio (secondi)</label><input type="number" id="ve_start" value="0" min="0" step="0.1" /></div>
+          </div>
+          <div class="op-fields" data-op="trim">
+            <div class="field"><label>Fine (secondi, vuoto = fine video)</label><input type="number" id="ve_end" placeholder="es. 30" min="0" step="0.1" /></div>
+          </div>
+
+          <!-- crop -->
+          <div class="op-fields" data-op="crop">
+            <div class="field"><label>X (px)</label><input type="number" id="ve_x" value="0" min="0" /></div>
+          </div>
+          <div class="op-fields" data-op="crop">
+            <div class="field"><label>Y (px)</label><input type="number" id="ve_y" value="0" min="0" /></div>
+          </div>
+          <div class="op-fields" data-op="crop">
+            <div class="field"><label>Larghezza (px)</label><input type="number" id="ve_cw" value="1280" min="1" /></div>
+          </div>
+          <div class="op-fields" data-op="crop">
+            <div class="field"><label>Altezza (px)</label><input type="number" id="ve_ch" value="720" min="1" /></div>
+          </div>
+
+          <!-- resize -->
+          <div class="op-fields" data-op="resize">
+            <div class="field"><label>Larghezza (px, 0 = auto)</label><input type="number" id="ve_rw" value="1280" min="0" /></div>
+          </div>
+          <div class="op-fields" data-op="resize">
+            <div class="field"><label>Altezza (px, 0 = auto)</label><input type="number" id="ve_rh" value="0" min="0" /></div>
+          </div>
+
+          <!-- speed -->
+          <div class="op-fields" data-op="speed">
+            <div class="field">
+              <label>Fattore velocità</label>
+              <select id="ve_factor">
+                <option value="0.25">0.25× — slow motion</option>
+                <option value="0.5">0.5× — metà</option>
+                <option value="1">1× — invariato</option>
+                <option value="2" selected>2× — doppia</option>
+                <option value="4">4× — timelapse</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- compress -->
+          <div class="op-fields" data-op="compress">
+            <div class="field">
+              <label>Qualità (CRF)</label>
+              <select id="ve_crf">
+                <option value="20">Alta (CRF 20)</option>
+                <option value="26" selected>Media — consigliata (CRF 26)</option>
+                <option value="30">Bassa — file minimo (CRF 30)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- gif -->
+          <div class="op-fields" data-op="gif">
+            <div class="field"><label>FPS</label><input type="number" id="ve_fps" value="12" min="1" max="30" /></div>
+          </div>
+          <div class="op-fields" data-op="gif">
+            <div class="field"><label>Larghezza GIF (px)</label><input type="number" id="ve_gifw" value="480" min="32" /></div>
+          </div>
+        </div>
+
+        <div class="action-row">
+          <button class="btn btn-primary" id="ve-run-btn" onclick="runEditVideo()">
+            <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            Avvia
+          </button>
+          <button class="btn btn-danger" id="ve-cancel-btn" onclick="cancelProcess()" style="display:none;">
+            <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+            Annulla
+          </button>
+          <span id="ve-badge" style="display:none;" class="status-badge"></span>
         </div>
       </div>
     </div>
@@ -968,6 +1251,170 @@
       onEnd(); es.close();
     };
   }
+
+  /* ── Image editing ── */
+  async function uploadEditImage(input) {
+    const file = input.files[0]; if (!file) return;
+    const hint = document.getElementById('ie-hint');
+    hint.style.display = 'block'; hint.style.color = 'var(--muted)';
+    hint.textContent = `Caricamento "${file.name}"…`;
+    const fd = new FormData(); fd.append('file', file);
+    try {
+      const data = await fetch('/api/upload-image', { method: 'POST', body: fd }).then(r => r.json());
+      if (data.ok) {
+        document.getElementById('ie_input').value = data.path;
+        const base = data.path.replace(/\.[^.]+$/, '');
+        const ext = data.path.split('.').pop();
+        if (!document.getElementById('ie_output').value.trim())
+          document.getElementById('ie_output').value = base + '_edit.' + ext;
+        document.getElementById('ie-before').src = URL.createObjectURL(file);
+        document.getElementById('ie-preview').style.display = 'block';
+        document.getElementById('ie-after').src = '';
+        hint.style.color = 'var(--success)'; hint.textContent = `✓ "${file.name}" pronto`;
+      } else { hint.style.color = 'var(--error)'; hint.textContent = 'Errore caricamento.'; }
+    } catch { hint.style.color = 'var(--error)'; hint.textContent = 'Errore di rete.'; }
+    input.value = '';
+  }
+
+  function numOrNull(id) {
+    const v = document.getElementById(id).value.trim();
+    return v === '' ? null : parseInt(v);
+  }
+
+  async function runEditImage() {
+    const inputPath = document.getElementById('ie_input').value.trim();
+    let outputPath = document.getElementById('ie_output').value.trim();
+    if (!inputPath) { alert("Seleziona un'immagine prima."); return; }
+    if (!outputPath) { alert('Specifica un percorso di output.'); return; }
+
+    const cx = numOrNull('ie_crop_x'), cy = numOrNull('ie_crop_y'),
+          cw = numOrNull('ie_crop_w'), ch = numOrNull('ie_crop_h');
+    let crop = null;
+    if (cw && ch) crop = [cx || 0, cy || 0, cw, ch];
+
+    const payload = {
+      input_path: inputPath, output_path: outputPath,
+      rotate: parseInt(document.getElementById('ie_rotate').value),
+      flip_h: document.getElementById('ie_flip_h').checked,
+      flip_v: document.getElementById('ie_flip_v').checked,
+      crop: crop,
+      resize_w: parseInt(document.getElementById('ie_resize_w').value) || 0,
+      resize_h: parseInt(document.getElementById('ie_resize_h').value) || 0,
+      brightness: parseFloat(document.getElementById('ie_brightness').value),
+      contrast: parseFloat(document.getElementById('ie_contrast').value),
+      saturation: parseFloat(document.getElementById('ie_saturation').value),
+      sharpness: parseFloat(document.getElementById('ie_sharpness').value),
+      filter: document.getElementById('ie_filter').value,
+      fmt: document.getElementById('ie_fmt').value,
+      quality: parseInt(document.getElementById('ie_quality').value),
+    };
+
+    const btn = document.getElementById('ie-run-btn');
+    btn.disabled = true;
+    setBadge('ie-badge', 'Elaborazione…', 'badge-running');
+    try {
+      const data = await fetch('/api/edit-image', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload),
+      }).then(r => r.json());
+      if (data.ok) {
+        setBadge('ie-badge', 'Fatto ✓', 'badge-done');
+        document.getElementById('ie-preview').style.display = 'block';
+        document.getElementById('ie-after').src = '/api/preview-image?path=' + encodeURIComponent(data.output_path) + '&t=' + Date.now();
+        document.getElementById('ie-save-hint').textContent = '✓ Salvato in: ' + data.output_path;
+      } else {
+        setBadge('ie-badge', 'Errore', 'badge-error');
+        alert('Errore: ' + data.error);
+      }
+    } catch { setBadge('ie-badge', 'Errore', 'badge-error'); }
+    btn.disabled = false;
+  }
+
+  /* ── Video editing ── */
+  function updateVideoOp() {
+    const op = document.getElementById('ve_operation').value;
+    document.querySelectorAll('#page-videdit .op-fields').forEach(el => {
+      el.classList.toggle('active', el.dataset.op === op);
+    });
+    // adjust default output extension for special outputs
+    const outEl = document.getElementById('ve_output');
+    const cur = outEl.value.trim();
+    if (!cur) return;
+    let ext = 'mp4';
+    if (op === 'gif') ext = 'gif';
+    else if (op === 'extract_audio') ext = 'mp3';
+    outEl.value = cur.replace(/\.[^.]+$/, '.' + ext);
+  }
+
+  async function uploadEditVideo(input) {
+    const file = input.files[0]; if (!file) return;
+    const hint = document.getElementById('ve-hint');
+    hint.style.display = 'block'; hint.style.color = 'var(--muted)';
+    hint.textContent = `Caricamento "${file.name}"…`;
+    const fd = new FormData(); fd.append('file', file);
+    try {
+      const data = await fetch('/api/upload', { method: 'POST', body: fd }).then(r => r.json());
+      if (data.ok) {
+        document.getElementById('ve_input').value = data.path;
+        if (!document.getElementById('ve_output').value.trim()) {
+          const base = data.path.replace(/\.[^.]+$/, '');
+          document.getElementById('ve_output').value = base + '_edit.mp4';
+          updateVideoOp();
+        }
+        hint.style.color = 'var(--success)'; hint.textContent = `✓ "${file.name}" pronto`;
+      } else { hint.style.color = 'var(--error)'; hint.textContent = 'Errore caricamento.'; }
+    } catch { hint.style.color = 'var(--error)'; hint.textContent = 'Errore di rete.'; }
+    input.value = '';
+  }
+
+  async function runEditVideo() {
+    const inputPath = document.getElementById('ve_input').value.trim();
+    const outputPath = document.getElementById('ve_output').value.trim();
+    if (!inputPath) { alert('Seleziona un video prima.'); return; }
+    if (!outputPath) { alert('Specifica un percorso di output.'); return; }
+    const op = document.getElementById('ve_operation').value;
+
+    const endVal = document.getElementById('ve_end').value.trim();
+    const payload = {
+      input_path: inputPath, output_path: outputPath, operation: op,
+      start: parseFloat(document.getElementById('ve_start').value) || 0,
+      end: endVal === '' ? null : parseFloat(endVal),
+      x: parseInt(document.getElementById('ve_x').value) || 0,
+      y: parseInt(document.getElementById('ve_y').value) || 0,
+      w: op === 'crop' ? (parseInt(document.getElementById('ve_cw').value) || 0)
+                       : (parseInt(document.getElementById('ve_rw').value) || 0),
+      h: op === 'crop' ? (parseInt(document.getElementById('ve_ch').value) || 0)
+                       : (parseInt(document.getElementById('ve_rh').value) || 0),
+      factor: parseFloat(document.getElementById('ve_factor').value) || 1,
+      fps: parseInt(document.getElementById('ve_fps').value) || 12,
+      crf: parseInt(document.getElementById('ve_crf').value) || 26,
+    };
+    if (op === 'gif') payload.w = parseInt(document.getElementById('ve_gifw').value) || 480;
+
+    const runBtn = document.getElementById('ve-run-btn');
+    const cancelBtn = document.getElementById('ve-cancel-btn');
+    runBtn.disabled = true; cancelBtn.style.display = 'inline-flex';
+    document.getElementById('log').innerHTML = '';
+    logLines = 0; setProgress(5); showProgress();
+    setBadge('ve-badge', 'In corso…', 'badge-running');
+
+    const data = await fetch('/api/edit-video', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    }).then(r => r.json());
+
+    if (!data.ok) {
+      appendLog('Errore: ' + data.error, 'log-error');
+      setBadge('ve-badge', 'Errore', 'badge-error');
+      runBtn.disabled = false; cancelBtn.style.display = 'none'; return;
+    }
+    listenEvents('ve-badge', () => {
+      runBtn.disabled = false; cancelBtn.style.display = 'none';
+    });
+  }
+
+  // init default op fields
+  updateVideoOp();
 </script>
 </body>
 </html>

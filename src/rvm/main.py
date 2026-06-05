@@ -1,4 +1,4 @@
-"""FastAPI server + CLI entry point for rvm-web."""
+"""FastAPI server + CLI entry point for rvm."""
 from __future__ import annotations
 
 import asyncio
@@ -15,8 +15,9 @@ from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse
 from pydantic import BaseModel
 
 from .processing import process_video, upscale_image, upscale_video
+from .editing import edit_image, edit_video
 
-app = FastAPI(title="rvm-web")
+app = FastAPI(title="rvm")
 
 _mp_queue: Optional[mp.Queue] = None
 _current_proc: Optional[mp.Process] = None
@@ -57,8 +58,41 @@ class UpscaleVideoRequest(BaseModel):
     crf: int = 16
 
 
+class EditImageRequest(BaseModel):
+    input_path: str
+    output_path: str
+    rotate: int = 0
+    flip_h: bool = False
+    flip_v: bool = False
+    crop: Optional[list[int]] = None
+    resize_w: int = 0
+    resize_h: int = 0
+    brightness: float = 1.0
+    contrast: float = 1.0
+    saturation: float = 1.0
+    sharpness: float = 1.0
+    filter: str = "none"
+    fmt: str = ""
+    quality: int = 92
+
+
+class EditVideoRequest(BaseModel):
+    input_path: str
+    output_path: str
+    operation: str = "convert"
+    start: float = 0.0
+    end: Optional[float] = None
+    x: int = 0
+    y: int = 0
+    w: int = 0
+    h: int = 0
+    factor: float = 1.0
+    fps: int = 12
+    crf: int = 26
+
+
 def _worker(params: dict, q: "mp.Queue[str]") -> None:
-    from rvm_web.processing import process_video
+    from rvm.processing import process_video
     try:
         process_video(params, progress_cb=lambda msg: q.put(msg))
     except Exception as exc:
@@ -68,9 +102,19 @@ def _worker(params: dict, q: "mp.Queue[str]") -> None:
 
 
 def _upscale_video_worker(params: dict, q: "mp.Queue[str]") -> None:
-    from rvm_web.processing import upscale_video
+    from rvm.processing import upscale_video
     try:
         upscale_video(params, progress_cb=lambda msg: q.put(msg))
+    except Exception as exc:
+        q.put(f"ERROR: {exc}")
+    finally:
+        q.put("__done__")
+
+
+def _edit_video_worker(params: dict, q: "mp.Queue[str]") -> None:
+    from rvm.editing import edit_video
+    try:
+        edit_video(params, progress_cb=lambda msg: q.put(msg))
     except Exception as exc:
         q.put(f"ERROR: {exc}")
     finally:
@@ -299,6 +343,37 @@ async def api_upscale_video(req: UpscaleVideoRequest) -> dict:
     _mp_queue = mp.Queue()
     _job_running.set()
     proc = mp.Process(target=_upscale_video_worker, args=(params, _mp_queue), daemon=True)
+    proc.start()
+    _current_proc = proc
+    _monitor_proc(proc)
+    return {"ok": True}
+
+
+@app.post("/api/edit-image")
+async def api_edit_image(req: EditImageRequest) -> dict:
+    params = req.model_dump()
+    if not Path(req.input_path).exists():
+        return {"ok": False, "error": f"File non trovato: {req.input_path}"}
+    try:
+        loop = asyncio.get_running_loop()
+        out = await loop.run_in_executor(None, lambda: edit_image(params))
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)}
+    return {"ok": True, "output_path": out}
+
+
+@app.post("/api/edit-video")
+async def api_edit_video(req: EditVideoRequest) -> dict:
+    global _current_proc, _mp_queue
+    if _job_running.is_set():
+        return {"ok": False, "error": "Un job è già in esecuzione."}
+    if not Path(req.input_path).exists():
+        return {"ok": False, "error": f"File non trovato: {req.input_path}"}
+
+    params = req.model_dump()
+    _mp_queue = mp.Queue()
+    _job_running.set()
+    proc = mp.Process(target=_edit_video_worker, args=(params, _mp_queue), daemon=True)
     proc.start()
     _current_proc = proc
     _monitor_proc(proc)

@@ -1,11 +1,11 @@
-# RVM Web — AI Media Tools
+# RVM — Local Media Studio
 
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![uv](https://img.shields.io/badge/install%20with-uv-purple)](https://github.com/astral-sh/uv)
 
-**One-command web UI for [RobustVideoMatting](https://github.com/PeterL1n/RobustVideoMatting) + local upscaling.**  
-Remove video/image backgrounds and upscale media with AI — no green screen needed.
+**One-command local web UI: background removal, upscaling, and full image/video editing.**  
+Everything runs on your machine — no green screen, no cloud, no extra installs.
 
 ![screenshot](docs/screenshot.png)
 
@@ -13,12 +13,14 @@ Remove video/image backgrounds and upscale media with AI — no green screen nee
 
 ## Features
 
-Sidebar navigation with four tools:
+Sidebar navigation with six tools:
 
 - **Video background removal** ([RobustVideoMatting](https://github.com/PeterL1n/RobustVideoMatting)) — MobileNetV3 (fast) or ResNet50 (accurate); export as MP4 composition, alpha mask, or PNG sequence with real RGBA transparency
 - **Image background removal** ([rembg](https://github.com/danielgatis/rembg) / U2Net) — upload a photo, get a transparent PNG, with before/after preview
 - **Image upscaling** — 2× / 4×, Lanczos (no extra deps) or Real-ESRGAN (AI)
 - **Video upscaling** — 2× / 4×, Lanczos or Real-ESRGAN, **original audio preserved** (muxed back via bundled ffmpeg)
+- **Image editing** (Pillow) — crop, resize, rotate/flip, brightness/contrast/saturation/sharpness, filters (B&W, sepia, invert, blur, sharpen, auto-enhance), format convert + quality (PNG/JPG/WEBP), live before/after preview
+- **Video editing** (bundled ffmpeg) — trim, crop, resize, change speed, compress, format convert, export GIF, extract audio, mute, reverse — with live progress
 
 Plus:
 
@@ -35,10 +37,11 @@ Requires [uv](https://docs.astral.sh/uv/getting-started/installation/).
 
 ```bash
 uv tool install git+https://github.com/metiu1/rvm-web
-rvm-web
+rvm
 ```
 
 A browser window opens automatically at `http://localhost:7860`.
+(The old `rvm-web` command still works as an alias.)
 
 ### CUDA (NVIDIA GPU) — recommended
 
@@ -66,7 +69,7 @@ Verify CUDA is active — the upscaling log shows `Modello caricato su cuda:0`,
 or check directly:
 
 ```bash
-uv tool run --from rvm-web python -c "import torch; print(torch.cuda.is_available())"
+uv tool run --from rvm python -c "import torch; print(torch.cuda.is_available())"
 ```
 
 > **Real-ESRGAN** AI upscaling is **built-in** — no extra packages needed.

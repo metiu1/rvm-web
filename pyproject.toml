@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "rvm-web"
-version = "0.1.0"
-description = "AI video background removal with web UI — RobustVideoMatting wrapped in FastAPI"
+name = "rvm"
+version = "0.2.0"
+description = "Local AI media studio — background removal, upscaling, image & video editing in one web UI"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.9,<3.13"
@@ -30,11 +30,13 @@ dependencies = [
     "torchvision>=0.17.0",
     "rembg[cpu]>=2.0.50",
     "pillow>=10.0.0",
+    "numpy>=1.24.0",
     "imageio-ffmpeg>=0.4.9",
 ]
 
 [project.scripts]
-rvm-web = "rvm_web.main:main"
+rvm = "rvm.main:main"
+rvm-web = "rvm.main:main"  # backwards-compatible alias
 
 [project.urls]
 Homepage   = "https://github.com/metiu1/rvm-web"
@@ -42,7 +44,7 @@ Repository = "https://github.com/metiu1/rvm-web"
 Issues     = "https://github.com/metiu1/rvm-web/issues"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/rvm_web"]
+packages = ["src/rvm"]
 
 [tool.uv]
 # Auto-detect the local CUDA driver and pull matching torch wheels.
