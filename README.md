@@ -1,13 +1,42 @@
-# RVM — Local Media Studio
+<h1 align="center">RVM — Remove Video Backgrounds Locally</h1>
 
-[![Python](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/)
-[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![uv](https://img.shields.io/badge/install%20with-uv-purple)](https://github.com/astral-sh/uv)
+<p align="center">
+  <strong>AI background removal for video and images — no green screen, no cloud, no watermark.</strong><br/>
+  One command installs it. Everything runs on your own machine.
+</p>
 
-**One-command local web UI: background removal, upscaling, and full image/video editing.**  
-Everything runs on your machine — no green screen, no cloud, no extra installs.
+<p align="center">
+  <img src="https://img.shields.io/badge/python-3.9%2B-blue?style=flat-square" alt="Python"/>
+  <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="License"/>
+  <img src="https://img.shields.io/badge/install-uv-purple?style=flat-square" alt="uv"/>
+  <img src="https://img.shields.io/badge/GPU-CUDA%20%2B%20CPU%20fallback-brightgreen?style=flat-square" alt="GPU"/>
+  <img src="https://img.shields.io/badge/cloud-none-informational?style=flat-square" alt="No cloud"/>
+</p>
 
-![screenshot](docs/screenshot.png)
+```bash
+uv tool install git+https://github.com/metiu1/rvm-web
+rvm
+```
+
+A browser opens at `http://localhost:7860`. That is the whole setup.
+
+---
+
+## What it does
+
+Drop in a video, get it back with the background gone — no green screen, no
+subscription, no upload. RVM runs [RobustVideoMatting](https://github.com/PeterL1n/RobustVideoMatting)
+locally and exports **real RGBA transparency**, not a fake-transparent MP4:
+composited MP4, alpha mask, or a PNG sequence you can drop straight into
+After Effects, DaVinci Resolve or Premiere.
+
+Around that sits a small local media studio — image cutout, AI upscaling, and
+image/video editing — so the footage never has to leave your computer.
+
+**Why not a web tool:** online background removers cap the resolution, watermark
+the result, queue your job and keep your footage on their servers. This has no
+cap, no watermark, no queue and no server. Your GPU does the work, your disk
+keeps the file.
 
 ---
 
