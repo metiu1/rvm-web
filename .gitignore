@@ -7,4 +7,6 @@ build/
 .env
 *.mp4
 *.png
-docs/screenshot.png
+
+# but the README screenshots are part of the docs
+!docs/*.png
