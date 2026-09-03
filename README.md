@@ -1,14 +1,14 @@
-<h1 align="center">RVM — Remove Video Backgrounds Locally</h1>
+<h1 align="center">RVM — cut the background out of a video, on your own PC</h1>
 
 <p align="center">
-  <strong>AI background removal for video and images — no green screen, no cloud, no watermark.</strong><br/>
-  One command installs it. Everything runs on your own machine.
+  <strong>Give it a video, get back the person with the background gone.</strong><br/>
+  No green screen. No upload. No subscription. No watermark. It runs on your computer.
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.9%2B-blue?style=flat-square" alt="Python"/>
   <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="License"/>
-  <img src="https://img.shields.io/badge/install-uv-purple?style=flat-square" alt="uv"/>
+  <img src="https://img.shields.io/badge/install-one%20command-purple?style=flat-square" alt="One command install"/>
   <img src="https://img.shields.io/badge/GPU-CUDA%20%2B%20CPU%20fallback-brightgreen?style=flat-square" alt="GPU"/>
   <img src="https://img.shields.io/badge/cloud-none-informational?style=flat-square" alt="No cloud"/>
 </p>
@@ -18,29 +18,45 @@ uv tool install git+https://github.com/metiu1/rvm-web
 rvm
 ```
 
-A browser opens at `http://localhost:7860`. That is the whole setup.
-
 <p align="center">
   <img src="docs/screenshot.png" alt="RVM local web UI — video background removal panel with model, output type and device selection" width="900"/>
 </p>
 
 ---
 
-## What it does
+## What it is
 
-Drop in a video, get it back with the background gone — no green screen, no
-subscription, no upload. RVM runs [RobustVideoMatting](https://github.com/PeterL1n/RobustVideoMatting)
-locally and exports **real RGBA transparency**, not a fake-transparent MP4:
-composited MP4, alpha mask, or a PNG sequence you can drop straight into
-After Effects, DaVinci Resolve or Premiere.
+RVM is a small app you install with one command. It opens in your browser like a
+website, but there is no website: everything runs on your own machine, and your
+footage never leaves it.
 
-Around that sits a small local media studio — image cutout, AI upscaling, and
-image/video editing — so the footage never has to leave your computer.
+You pick a video, press start, and it removes the background — the same trick a green
+screen gives you, except you do not need the green screen. What comes out is **real
+transparency** (an actual alpha channel), so you can drop the clip straight into
+Premiere, DaVinci Resolve, After Effects or OBS and put whatever you like behind it.
 
-**Why not a web tool:** online background removers cap the resolution, watermark
-the result, queue your job and keep your footage on their servers. This has no
-cap, no watermark, no queue and no server. Your GPU does the work, your disk
-keeps the file.
+You can also just cut out a photo, upscale a blurry video to 4×, or trim, crop, speed
+up and compress a clip — the tools you keep opening a different website for, all in
+one place, offline.
+
+## Who it is for
+
+- **Creators, streamers and editors** who want the "no green screen" cutout without
+  paying a monthly fee per export.
+- **Anyone whose footage cannot be uploaded** — client work, NDAs, faces of people who
+  did not consent to a stranger's server, anything you would rather keep on your disk.
+- **People with long or high-resolution video**, which is exactly what free online
+  tools refuse to process.
+
+## Why not just use an online tool
+
+Web background removers cap the resolution, stamp a watermark on the result, put you
+in a queue behind everyone else, charge by the minute, and keep a copy of your video
+on their servers.
+
+This one has no cap, no watermark, no queue, no account and no server. Your graphics
+card does the work, your disk keeps the file. If you do not have a GPU it still runs,
+just slower.
 
 ---
 
