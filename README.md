@@ -20,6 +20,10 @@ rvm
 
 A browser opens at `http://localhost:7860`. That is the whole setup.
 
+<p align="center">
+  <img src="docs/screenshot.png" alt="RVM local web UI — video background removal panel with model, output type and device selection" width="900"/>
+</p>
+
 ---
 
 ## What it does
